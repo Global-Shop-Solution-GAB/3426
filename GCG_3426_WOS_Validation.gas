@@ -1,0 +1,993 @@
+Program.Sub.ScreenSU.Start
+gui.Form1..create
+gui.Form1..caption("")
+gui.Form1..size(2715,1170)
+gui.Form1..position(0,0)
+gui.Form1..alwaysontop(False)
+gui.Form1..fontname("Arial")
+gui.Form1..fontsize(8)
+gui.Form1..forecolor(0)
+gui.Form1..fontstyle(,,,,)
+gui.Form1..BackColor(-2147483633)
+gui.Form1..controlbox(True)
+gui.Form1..maxbutton(True)
+gui.Form1..minbutton(True)
+gui.Form1..mousepointer(0)
+gui.Form1..moveable(True)
+gui.Form1..sizeable(True)
+gui.Form1..ShowInTaskBar(True)
+gui.Form1..titlebar(True)
+gui.Form1.lbl1.create(label,"Please Wait",True,1935,255,1,200,350,True,2,Arial,10,-2147483633,0)
+gui.Form1.lbl1.fontstyle(True,False,False,False)
+gui.Form1.lbl2.create(label,"Loading Schedule",True,1935,255,1,200,110,True,2,Arial,10,-2147483633,0)
+gui.Form1.lbl2.fontstyle(True,False,False,False)
+
+
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Variable.UDT.NestID.Define("NestID",String,"Nest_ID")
+Variable.uGlobal.uNestID.Declare("NestID")
+
+Variable.UDT.Nest.Define("LaborSeq",String,"LABORSEQ")
+Variable.UDT.Nest.Define("MatlSeq",String,"MatlSEQ")
+Variable.UDT.Nest.Define("Nest_Qty",Long,"Nest_Qty")
+Variable.UDT.Nest.Define("MnoRef",String,"MnoRef")
+Variable.UDT.Nest.Define("PrdRef",String,"PrdRef")
+Variable.uGlobal.uNest.Declare("Nest")
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'Coded by: JCT
+'Project Start Date: 05/31/2011
+'
+'Hook 15890
+'Job-suffix=000004
+'Seq=000005
+'check close=000003 ("Y")
+'000008=leave
+'15881
+F.ODBC.Connection!Con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+V.Local.sFileName.Declare(String)
+V.Local.sFilePath.Declare(String)
+V.Local.sHold.Declare(String)
+V.Local.sDatetime.Declare(String)
+V.Local.sData.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.sMsg.Declare(String)
+V.Local.sSeq.Declare(String)
+V.Local.sdelete.Declare(String)
+V.Local.iRowCount.Declare(Long)
+V.Local.sBDFRowData.Declare(String)
+V.Local.sBDFDataValues.Declare(String)
+V.Local.sSel.Declare(String)
+V.Local.sJob.Declare(String)
+V.Local.iFor.Declare(Long)
+V.Local.sSched.Declare(String)
+V.Local.sSchedSuf.Declare(String)
+V.Local.sCloseTxt.Declare(String)
+V.Local.bExists.Declare(Boolean)
+
+' txt for multi line cose option
+F.Intrinsic.String.Concat(V.System.Temp,"\Close.txt",V.Local.sCloseTxt)
+F.Intrinsic.File.Exists(V.Local.sCloseTxt,V.Local.bExists)
+
+'get schedule that employee is logged into
+F.Intrinsic.String.Concat("select Schedule from Lantek_SchedInUse where Employee='",V.Passed.009993,"' and Trmnl='",V.Caller.Terminal,"'",V.Local.sSel)
+F.ODBC.Connection!Con.OpenLocalRecordsetRO("rstSel",V.Local.sSel)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstSel.eof,=,False)
+		V.Local.sSched.Set(V.ODBC.Con!rstSel.FieldValTrim!Schedule)
+ 		V.Local.sSchedSuf.Set(V.ODBC.Con!rstSel.FieldValTrim!Schedule)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+F.ODBC.Con!rstSel.Close
+
+' ==============SINGLE LINE CLOSE======================================
+'close flag hook 15892
+F.Intrinsic.Control.If(V.Caller.Hook,=,15892)
+	F.Intrinsic.String.LPad(V.Passed.000005,"0",6,V.Local.sSeq)
+
+	'if close flag is checked
+	F.Intrinsic.Control.If(V.passed.000003,=,"Y")
+
+		' ********** verify complete checks for schedule in use to continue else exit *****************************
+		F.Intrinsic.Control.CallSub(Verifycomplete,"SCHED",V.Local.sSched,"SHEDSUF",V.Local.sSchedSuf)
+
+		'if job not complete, give message asking if they really want to close the seq
+		F.Intrinsic.Control.If(V.Args.JobComplete,=,"False")
+			F.Intrinsic.String.Concat("Qty Required for",V.Ambient.NewLine,"JOB: ",V.Passed.000004,V.Ambient.NewLine,"SEQ: ",V.Local.sSeq,V.Ambient.NewLine,"is ",V.Args.JobTotal,V.Ambient.NewLine,"Are you sure you want to close this seq?",V.Local.sMsg)
+			F.Intrinsic.UI.MsgBoxext("",V.Local.sMsg,"24*!*Leave*!*Close")
+
+			'if they don't really want to close the seq, reset the variable to "N"
+			F.Intrinsic.Control.If(Variable.Ambient.AltBoxClick,=,3)
+				V.Passed.000003.Set("N")
+				V.Passed.000008.Set("Y")
+				F.Intrinsic.Control.CallSub(Unload)
+
+			'if they do really want to close the seq
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.StripCharacters(V.Passed.000004,V.Local.sJob)
+				F.Intrinsic.String.RPad(V.Local.sJob," ",10,V.Local.sJob)
+
+				'set close flag on Lantek_Wos
+				F.Intrinsic.String.Concat("update Lantek_Wos set Complete='1' where MNOREF='",V.Local.sJob,"' and LaborSeq='",V.Local.sSeq,"'",V.Local.sSel)
+				F.ODBC.Connection!Con.Execute(V.Local.sSel)
+				F.Intrinsic.Control.CallSub(Unload)
+			F.Intrinsic.Control.EndIf
+
+		'set close flag on Lantek_Wos
+		F.Intrinsic.Control.Else
+			F.Intrinsic.String.StripCharacters(V.Passed.000004,V.Local.sJob)
+			F.Intrinsic.String.RPad(V.Local.sJob," ",10,V.Local.sJob)
+
+			F.Intrinsic.String.Concat("update Lantek_Wos set Complete='1' where MNOREF='",V.Local.sJob,"' and LaborSeq='",V.Local.sSeq,"'",V.Local.sSel)
+			F.ODBC.Connection!Con.Execute(V.Local.sSel)
+			F.Intrinsic.Control.CallSub(Unload)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Else
+
+	'if close flag is not checked, there's nothing to do at this step
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+
+' ==============SINGLE LINE UPDATE======================================
+'single line update
+F.Intrinsic.Control.ElseIf(V.Caller.Hook,=,15890)
+
+	'update Qty Complete
+	F.Intrinsic.Control.CallSub(Qtycomplete)
+
+	'if nest seq is not complete, and they don't want to close the seq, just exit program at this point
+	F.Intrinsic.Control.If(V.Args.NestComplete,=,"False")
+	'************************delete from Lantek_SchedInUse before unload on process hook******************************
+		F.Intrinsic.String.Concat("delete from Lantek_SchedInUse where Employee='",V.Passed.009993,"'",V.Local.sdelete)
+		F.ODBC.Connection!Con.Execute(V.Local.sdelete)
+		F.Intrinsic.Control.CallSub(Unload)
+
+	'verify nest is complete...if nest seq is still open on Lantek_Wos, then assume Nest is not complete
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.CallSub(Nestcomplete)
+
+		'if nest wasn't complete, program would have ended itself in the "Nestcomplete" sub
+		F.Intrinsic.Control.CallSub(Machinejob)
+'----------------------------------------------------------------------------------------------------------------------------
+		'************************delete from Lantek_SchedInUse before unload on process hook******************************
+		F.Intrinsic.String.Concat("delete from Lantek_SchedInUse where Employee='",V.Passed.009993,"'",V.Local.sdelete)
+		F.ODBC.Connection!Con.Execute(V.Local.sdelete)
+
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+
+' ==============MULTI LINE UPDATE======================================
+'multi line update...use15915
+F.Intrinsic.Control.ElseIf(V.Caller.Hook,=,15915)
+	F.Intrinsic.String.LPad(V.Passed.000005,"0",6,V.Local.sSeq)
+
+	' call sub to see if the current job is the last job on the mutli-line update, and getthe schedule id
+	F.Intrinsic.Control.CallSub(Lastmultisched)
+
+	' see if they have specified close
+	F.Intrinsic.Control.If(V.Local.bExists,=,True)
+		F.Intrinsic.File.File2String(V.Local.sCloseTxt,V.Local.sCloseTxt)
+		F.Intrinsic.Control.If(V.Local.sCloseTxt,=,"N")
+			V.Passed.777777.Set(1)
+			F.Intrinsic.Control.CallSub(Unload)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.CallSub(Multi_verifycomplete,"SCHED",V.Local.sSched,"SHEDSUF",V.Local.sSchedSuf)
+	F.Intrinsic.Control.EndIf
+
+	'update Qty Complete
+	F.Intrinsic.Control.CallSub(Qtycomplete)
+
+	'if nest and job are not complete
+	F.Intrinsic.Control.If(V.Args.NestComplete,=,"False")
+	F.Intrinsic.Control.andIf(V.Args.JobComplete,=,"False")
+
+		'if last multi job record, delete from Lantek_Sched In Use
+		F.Intrinsic.Control.If(V.Args.LASTSEQ,=,"True")
+			F.Intrinsic.String.Concat("delete from Lantek_SchedInUse where Employee='",V.Passed.009993,"'",V.Local.sdelete)
+			F.ODBC.Connection!Con.Execute(V.Local.sdelete)
+		F.Intrinsic.Control.EndIf
+
+		'end script without creating xml
+		F.Intrinsic.Control.CallSub(Unload)
+
+	'else,if nest and job are complete
+	F.Intrinsic.Control.Else
+
+		'verify nest is complete
+		'if last multi job record, create xml and delete from Lantek_Sched In Use
+		F.Intrinsic.Control.If(V.Args.LASTSEQ,=,"True")
+
+			'create xml
+			F.Intrinsic.UI.Sleep(1)
+			F.Intrinsic.Control.CallSub(Machinejob)
+			F.Intrinsic.String.Concat("delete from Lantek_SchedInUse where Employee='",V.Passed.009993,"'",V.Local.sdelete)
+			F.ODBC.Connection!Con.Execute(V.Local.sdelete)
+		F.Intrinsic.Control.EndIf
+
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+
+'=========================================================================
+' pre process hook
+F.Intrinsic.Control.elseIf(V.Caller.Hook,=,15910)
+	F.Intrinsic.Control.If(V.Local.bExists,=,True)
+		F.Intrinsic.File.DeleteFile(V.Local.sCloseTxt)
+	F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.EndIf
+
+'----------------------------------------------------------------------------------------------------------------------------
+F.Intrinsic.Control.CallSub(Unload)
+
+Program.Sub.Main.End
+
+Program.Sub.Unload.Start
+
+
+F.ODBC.Connection!Con.Close
+F.Intrinsic.Control.end
+
+Program.Sub.Unload.EndProgram.Sub.Main.End
+
+Program.Sub.MachineJob.Start
+V.Local.sHold.Declare(String)
+V.Local.sJob.Declare(String)
+V.Local.sSelOps.Declare(String)
+V.Local.sSelWos.Declare(String)
+V.Local.sWCString.Declare(String)
+V.Local.sFieldRef.Declare(String)
+V.Local.sFiedlValue.Declare(String)
+V.Local.sFldType.Declare(String)
+V.Local.iFor.Declare(Long)
+V.Local.iForNest.Declare(Long)
+V.Local.iForB.Declare(Long)
+V.Local.sOnhold.Declare(String)
+V.Local.sLocked.Declare(String)
+V.Local.sMatIsued.Declare(String)
+V.Local.sRunUnattend.Declare(String)
+V.Local.smustnest.Declare(String)
+V.Local.sSinglePrg.declare(String)
+V.Local.sHoist.Declare(String)
+V.Local.sRevDate.Declare(String)
+V.Local.sRelDate.Declare(String)
+V.Local.sDDate.Declare(String)
+V.Local.sSeqDate.Declare(String)
+V.Local.sComName.Declare(String)
+V.Local.sFieldValue.Declare(String)
+V.Local.fScrap.Declare(Float)
+V.Local.fPcs.Declare(Float)
+V.Local.sSel.Declare(String)
+V.Local.sNestId.Declare(String)
+V.Local.sdelete.Declare(String)
+V.Local.sDatetime.Declare(String)
+V.Local.sfilepath.Declare(String)
+V.Local.sfilename.Declare(String)
+V.Local.sMnoRef.Declare(String)
+
+V.uGlobal.uNest.Redim(-1,-1)
+V.uGlobal.uNestID.Redim(-1,-1)
+
+'000001=good
+'000002=scrap
+
+F.Intrinsic.String.StripCharacters(V.Passed.000004,V.Local.sJob)
+
+'get  Nest ID
+F.Intrinsic.String.Concat("select SCHEDULE from LANTEK_SchedInUse where Employee='",V.Passed.009993,"' and Trmnl='",V.Caller.Terminal,"'",V.local.ssel)
+F.ODBC.Connection!Con.OpenRecordsetRO("rstSel",V.Local.sSel)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstSel.EOF,=,False)
+		V.Local.sNestId.Set(V.ODBC.Con!rstSel.FieldValTrim!SCHEDULE)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+F.ODBC.Con!rstSel.Close
+
+
+Gui.Form1..Show
+F.Intrinsic.String.Concat(V.Ambient.Date.pervasivedate,V.Ambient.Time,V.Local.sdatetime)
+F.Intrinsic.String.StripCharacters(V.Local.sdatetime,V.Local.sdatetime)
+
+'V.Local.sFileName.Set("WO_New.xml")
+F.Intrinsic.String.Concat(V.Caller.PluginsDir,"\Lantek\GSS\NestCompleteOut\",V.Local.sFilePath)
+F.global.xml.createDocument("xmlDoc",False,True,False,False)
+
+'F.Intrinsic.UI.InvokeWaitDialog("Creating XML file.")
+'set root node
+F.global.xml.SetRoot("xmlDoc","VALIDATION")
+F.Intrinsic.String.Concat(V.Ambient.NewLine,V.Ambient.Tab,V.Local.shold)
+F.global.xml.appendTextNode("xmlDoc","root",V.Local.shold)
+
+
+F.Intrinsic.String.Concat("select Nest_Id from LANTEK_WOS where MNOREF='",V.Local.sJob,"' and Schedule='",V.Local.sNestId.trim,"'",V.Local.sSelWos)
+F.ODBC.Connection!Con.OpenRecordsetRO("rstWOS",V.Local.sSelWos)
+		F.Intrinsic.Control.If(V.ODBC.Con!rstWOS.EOF,=,False)
+			F.Intrinsic.Variable.LoadUDTFromRecordset("Con","rstWOS","v.uGlobal.uNestID",True,0)
+		F.Intrinsic.Control.EndIf
+	F.ODBC.Con!rstWOS.Close
+
+'get all part information
+	F.Intrinsic.String.Concat("select MnoRef, LaborSeq,MatlSeq,Nest_Qty,PrdRef  from LANTEK_WOS where Nest_Id='",V.uGlobal.uNestID!NestID,"'",V.Local.sSelWos)
+	F.ODBC.Connection!Con.OpenRecordsetRO("rstWOS",V.Local.sSelWos)
+			F.Intrinsic.Control.If(V.ODBC.Con!rstWOS.EOF,=,False)
+				F.Intrinsic.Variable.LoadUDTFromRecordset("Con","rstWOS","v.uGlobal.uNest",True,0)
+			F.Intrinsic.Control.EndIf
+		F.ODBC.Con!rstWOS.Close
+
+F.Intrinsic.Control.For(V.Local.iFor,V.uGlobal.uNest!MnoRef.LBound,V.uGlobal.uNest!MnoRef.UBound,1)
+'--------------------------------------------------------------------------------------------------
+'create node
+F.global.xml.createElementNode("xmlDoc","NESTING","")
+	F.global.xml.createAttributeNode("xmlDoc","Nestings",V.uGlobal.uNestID(V.Local.iForNest)!NestID)
+	F.global.xml.createAttributeNode("xmlDoc","MQ",V.uGlobal.uNest(V.Local.iForNest)!Nest_Qty)
+
+	F.Intrinsic.String.Concat(V.Ambient.NewLine,V.Ambient.Tab,V.Local.shold)
+		F.Global.XML.AppendTextNode("xmlDoc","NESTING",V.Local.sHold)
+		F.Global.XML.SetAttributeToNode("xmlDoc","NESTING","Nestings")
+		F.Global.XML.SetAttributeToNode("xmlDoc","NESTING","MQ")
+
+	F.Global.XML.DestroyNode("xmlDoc","Nestings")
+	F.Global.XML.DestroyNode("xmlDoc","MQ")
+
+F.global.xml.createElementNode("xmlDoc","PARTS","")
+	F.Global.XML.AppendTextNode("xmlDoc","NESTING",V.Local.sHold)
+	F.Global.XML.AppendNode("xmlDoc","NESTING","PARTS")
+F.Intrinsic.Control.For(V.Local.iFor,V.uGlobal.uNest!MnORef.LBound,V.uGlobal.uNest!MnORef.UBound,1)
+
+'===================================New 02/06/2012=========================================
+F.Intrinsic.String.Concat(V.Passed.009990.Trim,V.Passed.009991.Trim,V.Local.sMnoRef)
+
+F.Intrinsic.String.Concat("select Schedule from Lantek_SchedInUse where Employee='",V.Passed.009993,"' and Trmnl='",V.Caller.Terminal,"'",V.Local.sSel)
+F.ODBC.Connection!Con.OpenLocalRecordsetRO("rstSel",V.Local.sSel)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstSel.eof,=,False)
+
+		F.Intrinsic.String.Concat("select Qty_Complete, OrderQuantity,Good_Pcs, Scrap_Pcs from Lantek_Wos where MNOREF='",V.uGlobal.uNest(v.Local.iFor)!MnoRef,"' and LaborSeq='",V.uGlobal.uNest(v.Local.iFor)!LaborSeq,"' and Schedule='",V.ODBC.Con!rstSel.FieldValTrim!Schedule,"'",V.Local.sselOps)
+		F.ODBC.Connection!Con.OpenRecordsetRO("rstJobOps",V.Local.sSelOps)
+			F.Intrinsic.Control.If(V.ODBC.Con!rstJobOps.EOF,=,False)
+'				V.Local.fPcs.Set(V.ODBC.Con!rstJobOps.FieldVal!Good_Pcs)
+'				V.Local.fScrap.Set(V.ODBC.Con!rstJobOps.FieldVal!Scrap_Pcs)
+				V.Local.fPcs.Set(V.ODBC.Con!rstJobOps.FieldVal!OrderQuantity)
+			F.Intrinsic.Control.EndIf
+		F.ODBC.Con!rstJobOps.Close
+
+	F.Intrinsic.Control.EndIf
+F.ODBC.Con!rstSel.Close
+'==========================================================================================
+'create node
+	F.global.xml.createElementNode("xmlDoc","PART","")
+	F.Intrinsic.String.Concat(V.Ambient.NewLine,V.Ambient.Tab,V.Local.shold)
+		F.Global.XML.AppendTextNode("xmlDoc","PARTS",V.Local.sHold)
+		F.Global.XML.AppendNode("xmlDoc","PARTS","PART")
+
+				F.global.xml.createAttributeNode("xmlDoc","PrdRef",V.uGlobal.uNest(V.Local.iFor)!PrdRef)
+				F.global.xml.createAttributeNode("xmlDoc","MQ",V.Local.fPcs)
+				F.global.xml.createAttributeNode("xmlDoc","LQ",V.Local.fScrap)
+				F.global.xml.createAttributeNode("xmlDoc","MnORef",V.uGlobal.uNest(V.Local.iFor)!MnORef)
+				F.Global.XML.AppendNode("xmlDoc","PARTS","PART")
+
+					F.Global.XML.SetAttributeToNode("xmlDoc","PART","PrdRef")
+					F.Global.XML.SetAttributeToNode("xmlDoc","PART","MQ")
+					F.Global.XML.SetAttributeToNode("xmlDoc","PART","LQ")
+					F.Global.XML.SetAttributeToNode("xmlDoc","PART","MnORef")
+
+				F.Global.XML.DestroyNode("xmlDoc","PrdRef")
+				F.Global.XML.DestroyNode("xmlDoc","MQ")
+				F.Global.XML.DestroyNode("xmlDoc","LQ")
+				F.Global.XML.DestroyNode("xmlDoc","MnORef")
+		F.Global.XML.AppendTextNode("xmlDoc","PART",V.Local.sHold)
+
+		F.global.xml.destroyNode("xmlDoc","PART")
+F.Intrinsic.Control.Next(V.Local.iFor)
+'--------------------------------------------------------------------------------------------------
+	F.global.xml.destroyNode("xmlDoc","PARTS")
+
+	F.global.xml.appendNodeToRoot("xmlDoc","NESTING")
+
+	F.Intrinsic.String.Concat(V.Ambient.NewLine,V.Ambient.Tab,V.Local.shold)
+	F.global.xml.appendTextNode("xmlDoc","root",V.Local.shold)
+
+	F.global.xml.destroyNode("xmlDoc","NESTING")
+
+'F.Intrinsic.Control.Next(V.Local.iForNest)
+
+F.Intrinsic.String.Concat(V.Ambient.NewLine,V.Ambient.Tab,V.Local.shold)
+F.global.xml.appendTextNode("xmlDoc","NESTING",V.Local.shold)
+
+F.global.xml.appendNodeToRoot("xmlDoc","NESTING")
+F.global.xml.destroyNode("xmlDoc","NESTING")
+'
+
+F.Intrinsic.String.Concat("Nest_",V.uGlobal.uNestID!NestID,"_",V.Local.sdatetime,".xml",V.Local.sFileName)
+F.global.xml.appendTextNode("xmlDoc","root",V.Ambient.NewLine)
+'Saves document
+F.global.xml.saveDocument("xmlDoc",V.Local.sFilePath,V.Local.sFileName)
+'closes document
+F.global.xml.CloseDocument("xmlDoc")
+'
+'F.Intrinsic.UI.Msgbox("Machine Job Done")
+
+Program.Sub.MachineJob.End
+
+Program.Sub.NestComplete.Start
+
+V.Local.sSel.Declare(String)
+V.Local.sSched.Declare(String)
+V.Local.sSchedSuff.Declare(String)
+V.Local.sJob.Declare(String)
+V.Local.sUpdate.Declare(String)
+V.Local.fPcs.Declare(Float)
+V.Local.sMnoRef.Declare(String)
+
+'F.Intrinsic.UI.Msgbox("NEST COMPLETE")
+
+F.Intrinsic.String.StripCharacters(V.Passed.000004,V.Local.sJob)
+F.Intrinsic.String.Concat(V.Passed.009990.Trim,V.Passed.009991.Trim,V.Local.sMnoRef)
+
+
+F.Intrinsic.String.Concat("select SCHEDULE, ScheduleSuffix from LANTEK_SchedInUse where Employee='",V.Passed.009993,"'",V.local.ssel)
+F.ODBC.Connection!Con.OpenRecordsetRO("rstSel",V.Local.sSel)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstSel.EOF,=,False)
+		V.Local.sSched.Set(V.ODBC.Con!rstSel.FieldValTrim!SCHEDULE)
+		V.Local.sSchedSuff.Set(V.ODBC.Con!rstSel.FieldValTrim!ScheduleSuffix)
+	F.Intrinsic.Control.Else
+		F.ODBC.Con!rstSel.Close
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+F.ODBC.Con!rstSel.Close
+
+'see if there are any open seq for the sched/suff
+F.Intrinsic.String.Concat("select ScheduleSeq from LANTEK_WOS where Schedule='",V.Local.sSched.trim,"' and ScheduleSuffix='",V.Local.sSchedSuff,"' and Complete<>'1' ",V.local.ssel)
+F.ODBC.Connection!Con.OpenRecordsetRO("rstSel",V.Local.sSel)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstSel.EOF,=,False)
+		F.ODBC.Con!rstSel.Close
+	'if there are still some open sequences, exit the program.
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+F.ODBC.Con!rstSel.Close
+
+
+'if not the last schedule for the job/suffix/seq, manually delete it
+F.Intrinsic.String.Concat("delete from Job_CT_Flx_Schd where Schedule='",V.Local.sSched.trim,"' and Schedule_Suffix='",V.Local.sSchedSuff,"'",V.Local.sSel)
+F.ODBC.Connection!Con.Execute(V.Local.sSel)
+
+'************************delete from Lantek_SchedInUse before unload on process hook******************************
+'		F.Intrinsic.String.Concat("delete from Lantek_SchedInUse where Employee='",V.Passed.009993,"'",V.Local.sdelete)
+'		F.ODBC.Connection!Con.Execute(V.Local.sdelete)
+
+
+Program.Sub.NestComplete.End
+
+Program.Sub.VerifyComplete.Start
+
+
+'verify qty complete against required.
+'override to stop logout if trying to close and not really complete
+'message "Qty not complete.  Are you sure you want to close seq?"
+'job=v.passed.009990
+'suffix=v.passed.009991
+'seq=v.passed.009992
+'good=v.passed.000001
+'scrap=v.passed.000002
+'chk_close=v.passed.000003
+
+V.Local.sselOps.Declare(String)
+V.Local.fPcs.Declare(Float)
+V.Local.bNestComplete.Declare(Boolean)
+V.Local.sSched.Declare(String)
+V.Local.sSchedSuf.Declare(String)
+V.Local.sSel.Declare(String)
+V.Local.sMnoRef.Declare(String)
+V.Local.fGoodPcs.Declare(Float)
+V.Local.fScrapPcs.Declare(Float)
+V.Local.fTotalPcs.Declare(Float)
+V.Local.sMatSeq.Declare(String)
+V.Local.sLabSeq.Declare(String)
+V.Local.fTotalOnNest.Declare(Float)
+V.Local.bJobComplete.Declare(Boolean)
+V.Local.sSchedSeq.Declare(String)
+V.Local.fOrderQty.Declare(Float)
+V.Local.fPctAbove.Declare(Float)
+
+V.Local.bNestComplete.Set(False)
+V.Local.bJobComplete.Set(False)
+F.Intrinsic.String.Concat(V.Passed.009990.Trim,V.Passed.009991.Trim,V.Local.sMnoRef)
+
+' verify qantities
+F.Intrinsic.String.Concat("select Quantity, Nest_Qty, OrderQuantity,Complete,Good_Pcs, Scrap_Pcs,MatlSeq, LaborSeq,ScheduleSeq,OrderQuantity  from Lantek_Wos where MNOREF='",V.Local.sMnoRef,"' and LaborSeq='",V.Passed.009992.Trim,"' and Schedule='",V.Args.SCHED,"'",V.Local.sselOps)
+F.ODBC.Connection!Con.OpenRecordsetRW("rstJobOps",V.Local.sSelOps)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstJobOps.EOF,=,False)
+		F.Intrinsic.UI.Sleep(1)
+		V.Local.sMatSeq.Set(V.ODBC.Con!rstJobOps.FieldValtrim!MatlSeq)
+		V.Local.sLabSeq.Set(V.ODBC.Con!rstJobOps.FieldValTrim!LaborSeq)
+		V.Local.sSchedSeq.Set(V.ODBC.Con!rstJobOps.FieldValTrim!ScheduleSeq)
+
+		F.Intrinsic.Math.Add(V.Passed.000001,V.ODBC.Con!rstJobOps.FieldVal!Good_Pcs,V.Local.fGoodPcs)
+		F.Intrinsic.Math.Add(V.Passed.000002,V.ODBC.Con!rstJobOps.FieldVal!Scrap_Pcs,V.Local.fScrapPcs)
+		F.Intrinsic.Math.Add(V.Local.fGoodPcs,V.Local.fScrapPcs,V.Local.fTotalPcs)
+		F.Intrinsic.Math.Mult(V.ODBC.Con!rstJobOps.FieldVal!Quantity,V.ODBC.Con!rstJobOps.FieldVal!Nest_Qty,V.Local.fTotalOnNest)
+		V.Local.fOrderQty.Set(V.ODBC.Con!rstJobOps.FieldVal!OrderQuantity)
+
+		' if sched/suff/seq qty complete, set sched/suff/seq closed
+		F.Intrinsic.Control.If(V.Local.fTotalPcs,>=,V.Local.fTotalOnNest)
+			V.Local.bNestComplete.Set(True)
+		F.Intrinsic.Control.Endif
+
+' ****** ADDED JRM FOR ONLY LANTEK SHEET LASER ********************************
+	' if job not found on a Lantek schedule, exit program
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+
+F.ODBC.Con!rstJobOps.Close
+
+F.Intrinsic.Control.If(V.Local.bNestComplete,=,True)
+
+	' if qty is complete, verify qty for Job
+	F.Intrinsic.String.Concat("select sum(Qty_Complete) as Qty_Complete from Lantek_Wos where MNOREF='",V.Local.sMnoRef,"' and LaborSeq='",V.Passed.009992.Trim,"'",V.Local.sSel)
+	F.ODBC.Connection!Con.OpenRecordsetRO("rstSel",V.Local.sSel)
+		F.Intrinsic.Control.If(V.ODBC.Con!rstSel.EOF,=,False)
+			F.Intrinsic.UI.Sleep(1)
+			V.Local.fPcs.Set(V.ODBC.Con!rstSel.FieldVal!Qty_Complete)
+		F.Intrinsic.Control.EndIf
+	F.ODBC.Con!rstSel.Close
+
+	' if the total # of pieces complete is >= the order qty and <= 110% of the order qty, the job is complete
+'	F.Intrinsic.Math.Add(V.Local.fPcs,V.Local.fTotalPcs,V.Local.fTotalPcs)
+	F.Intrinsic.Math.Mult(V.Local.fOrderQty,1.10,V.Local.fPctAbove)
+	F.Intrinsic.Control.If(V.Local.fTotalPcs,=>,V.Local.fOrderQty)
+	F.Intrinsic.Control.AndIf(V.Local.fTotalPcs,<=,V.Local.fPctAbove)
+		V.Local.bJobComplete.Set(True)
+	F.Intrinsic.Control.Else
+		V.Local.bJobComplete.Set(False)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Variable.AddRV("NestComplete",V.Local.bNestComplete)
+F.Intrinsic.Variable.AddRV("JobComplete",V.Local.bJobComplete)
+F.Intrinsic.Variable.AddRV("JobTotal",V.Local.fTotalOnNest)
+
+
+Program.Sub.VerifyComplete.End
+
+Program.Sub.QtyComplete.Start
+
+
+V.Local.sselOps.Declare(String)
+V.Local.fGoodPcs.Declare(Float)
+V.Local.fScrapPcs.Declare(Float)
+V.Local.bNestComplete.Declare(Boolean)
+V.Local.sSched.Declare(String)
+V.Local.sSel.Declare(String)
+V.Local.sMnoRef.Declare(String)
+V.Local.fTotalPcs.Declare(Float)
+V.Local.fPcs.Declare(Float)
+V.Local.fTotalOnNest.Declare(Float)
+V.Local.sLabSeq.Declare(String)
+V.Local.bJobComplete.Declare(Boolean)
+V.Local.sComplete.Declare(String)
+V.Local.sMatSeq.Declare(String)
+V.Local.fOrderQty.Declare(Float)
+V.Local.smsg.Declare(String)
+V.Local.sSchedSuf.Declare(String)
+V.Local.sSchedSeq.Declare(String)
+V.Local.fPctAbove.Declare(Float)
+
+F.Intrinsic.String.Concat(V.Passed.009990.Trim,V.Passed.009991.Trim,V.Local.sMnoRef)
+
+'get schedule that employee is logged into
+F.Intrinsic.String.Concat("select Schedule,ScheduleSuffix from Lantek_SchedInUse where Employee='",V.Passed.009993,"' and Trmnl='",V.Caller.Terminal,"'",V.Local.sSel)
+F.ODBC.Connection!Con.OpenLocalRecordsetRO("rstSel",V.Local.sSel)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstSel.eof,=,False)
+		V.Local.sSched.Set(V.ODBC.Con!rstSel.FieldValTrim!Schedule)
+		V.Local.sSchedSuf.Set(V.ODBC.Con!rstSel.FieldValTrim!ScheduleSuffix)
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+F.ODBC.Con!rstSel.Close
+
+F.Intrinsic.String.Concat("select Qty_Complete, Quantity, Nest_Qty, OrderQuantity,Complete,Good_Pcs, Scrap_Pcs, MatlSeq,LaborSeq,ScheduleSeq,Complete from Lantek_Wos where MNOREF='",V.Local.sMnoRef,"' and LaborSeq='",V.Passed.009992.Trim,"' and Schedule='",V.Local.sSched,"'",V.Local.sselOps)
+F.ODBC.Connection!Con.OpenRecordsetRW("rstJobOps",V.Local.sSelOps)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstJobOps.EOF,=,False)
+
+		'even if QTY is not sufficient, if they decided to close the wo seq, then the nest and job seq are complete
+		F.Intrinsic.Control.If(V.ODBC.Con!rstJobOps.FieldVal!Complete,=,True)
+			V.Local.bNestComplete.Set(True)
+			V.Local.bJobComplete.Set(True)
+		F.Intrinsic.Control.Endif
+
+		V.Local.sLabSeq.Set(V.ODBC.Con!rstJobOps.FieldValTrim!LaborSeq)
+		V.Local.sMatSeq.Set(V.ODBC.Con!rstJobOps.FieldValTrim!MatlSeq)
+		V.Local.sSchedSeq.Set(V.ODBC.Con!rstJobOps.FieldValTrim!ScheduleSeq)
+
+		F.Intrinsic.Math.Add(V.Passed.000001,V.ODBC.Con!rstJobOps.FieldVal!Good_Pcs,V.Local.fGoodPcs)
+		F.Intrinsic.Math.Add(V.Passed.000002,V.ODBC.Con!rstJobOps.FieldVal!Scrap_Pcs,V.Local.fScrapPcs)
+		F.Intrinsic.Math.Add(V.Local.fGoodPcs,V.Local.fScrapPcs,V.Local.fTotalPcs)
+		F.Intrinsic.Math.Mult(V.ODBC.Con!rstJobOps.FieldVal!Quantity,V.ODBC.Con!rstJobOps.FieldVal!Nest_Qty,V.Local.fTotalOnNest)
+		V.Local.fOrderQty.Set(V.ODBC.Con!rstJobOps.FieldVal!OrderQuantity)
+
+		'if QTY is sufficient, then Nest Seq is complete
+		F.Intrinsic.Control.If(V.Local.fTotalPcs,>=,V.Local.fTotalOnNest)
+			F.Intrinsic.String.Concat("update Job_CT_FLX_SCHD set Flag_Closed='Y' where Schedule='",V.Local.sSched,"' and Schedule_Suffix='",V.Local.sSchedSuf,"' and Schedule_Seq='",V.Local.sSchedSeq,"'",V.Local.sSel)
+			F.ODBC.Connection!Con.Execute(V.Local.sSel)
+			F.ODBC.Con!rstJobOps.Set!Complete(1)
+			V.Local.bNestComplete.Set(True)
+		F.Intrinsic.Control.Endif
+
+		F.ODBC.Con!rstJobOps.Set!Qty_Complete(V.Local.fTotalPcs)
+		F.ODBC.Con!rstJobOps.Set!Good_Pcs(V.Local.fGoodPcs)
+		F.ODBC.Con!rstJobOps.Set!Scrap_Pcs(V.Local.fScrapPcs)
+		F.ODBC.Con!rstJobOps.Update
+
+	'F.Intrinsic.UI.Msgbox("Lantek WOS updated")
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+F.ODBC.Con!rstJobOps.Close
+
+
+''V.Local.fTotalPcs.Set(0)
+'V.Local.fPcs.Set(0)
+'
+''if qty is complete, verify qty for Job/nest
+'F.Intrinsic.String.Concat("select sum(Qty_Complete) as Qty_Complete from Lantek_Wos where MNOREF='",V.Local.sMnoRef,"' and LaborSeq='",V.Passed.009992.Trim,"'",V.Local.sSel)
+'F.ODBC.Connection!Con.OpenRecordsetRO("rstSel",V.Local.sSel)
+'	F.Intrinsic.Control.If(V.ODBC.Con!rstSel.EOF,=,False)
+'		V.Local.fPcs.Set(V.ODBC.Con!rstSel.FieldVal!Qty_Complete)
+'	F.Intrinsic.Control.EndIf
+'F.ODBC.Con!rstSel.Close
+
+'F.Intrinsic.Control.If(V.Local.fPcs,>=,V.Local.fOrderQty)
+F.Intrinsic.Math.Mult(V.Local.fTotalOnNest,1.10,V.Local.fPctAbove)
+F.Intrinsic.Control.If(V.Local.fTotalPcs,=>,V.Local.fTotalOnNest)
+F.Intrinsic.Control.AndIf(V.Local.fTotalPcs,<=,V.Local.fPctAbove)
+	V.Local.bJobComplete.Set(True)
+F.Intrinsic.Control.Else
+	V.Local.bJobComplete.Set(False)
+F.Intrinsic.Control.EndIf
+
+'if job qty is complete, close the material seq
+F.Intrinsic.Control.If(V.Local.bJobComplete,=,True)
+	F.Intrinsic.String.Concat("update Job_Operations set Flag_Closed='Y' where Job='",V.Passed.009990.Trim,"' and Suffix='",V.Passed.009991.Trim,"' and Seq='",V.Local.sMatSeq,"'",V.Local.sSel)
+	F.ODBC.Connection!Con.Execute(V.Local.sSel)
+F.Intrinsic.Control.EndIf
+
+
+F.Intrinsic.Variable.AddRV("NestComplete",V.Local.bNestComplete)
+F.Intrinsic.Variable.AddRV("JobComplete",V.Local.bJobComplete)
+
+Program.Sub.QtyComplete.End
+
+Program.Sub.Multi_VerifyComplete.Start
+
+
+
+'verify qty complete against required.
+'override to stop logout if trying to close and not really complete
+'message "Qty not complete.  Are you sure you want to close seq?"
+'Work Order|~|Seq|~|Good Pieces|~|Scrap Pieces|~|W/C|~|Close?|~|Leave?|~|Use Estimated Pieces|~|Setup|~|Save Comment
+'employee=
+V.Local.sselOps.Declare(String)
+V.Local.fPcs.Declare(Float)
+V.Local.bNestComplete.Declare(Boolean)
+V.Local.sSched.Declare(String)
+V.Local.sSchedSuf.Declare(String)
+V.Local.sSel.Declare(String)
+V.Local.sMnoRef.Declare(String)
+V.Local.fGoodPcs.Declare(Float)
+V.Local.fScrapPcs.Declare(Float)
+V.Local.fTotalPcs.Declare(Float)
+V.Local.sMatSeq.Declare(String)
+V.Local.sLabSeq.Declare(String)
+V.Local.fTotalOnNest.Declare(Float)
+V.Local.bJobComplete.Declare(Boolean)
+V.Local.sBDFRowDataValues.Declare(String)
+V.Local.sJob.Declare(String)
+V.Local.sSuffix.Declare(String)
+V.Local.sSeq.Declare(String)
+V.Local.sWO.Declare(String)
+V.Local.iRowCnt.Declare(Long)
+V.Local.iFor.Declare(Long)
+V.Local.sReadRow.Declare(String)
+V.Local.sMsg.Declare(String)
+V.Local.sCloseTxt.Declare(String)
+V.Local.bExists.Declare(Boolean)
+V.Local.bComplete.Declare(Boolean)
+V.Local.fPctAbove.Declare(Float)
+
+
+' txt for multi line cose option
+F.Intrinsic.String.Concat(V.System.Temp,"\Close.txt",V.Local.sCloseTxt)
+F.Intrinsic.File.Exists(V.Local.sCloseTxt,V.Local.bExists)
+
+V.Local.bNestComplete.Set(False)
+V.Local.bJobComplete.Set(False)
+
+'"SCHED",V.Local.sSched,"SHEDSUF",V.Local.sSchedSuf
+' load bdf
+F.Intrinsic.BDF.Load("AUX001","AUX001")
+
+' read bdf data
+F.Intrinsic.BDF.ReadRowCount("AUX001",V.Local.iRowCnt)
+F.Intrinsic.Math.Sub(V.Local.iRowCnt,1,V.Local.iRowCnt)
+F.Intrinsic.Control.For(V.Local.iFor,0,V.Local.iRowCnt,1)
+	F.Intrinsic.BDF.ReadRow("AUX001",V.Local.iFor,V.Local.sReadRow)
+	F.Intrinsic.String.Split(V.Local.sReadRow,"|~|",V.Local.sBDFRowDataValues)
+	F.Intrinsic.String.Split(V.Local.sBDFRowDataValues(0),"-",V.Local.sWO)
+	
+	V.Local.sWO.RedimPreserve(0,1)
+	V.Local.sJob.Set(V.Local.sWO(0).Trim)
+	V.Local.sSuffix.Set(V.Local.sWO(1).Trim)
+
+	F.Intrinsic.String.StripCharacters(V.Local.sBDFRowDataValues(0),V.Local.sMnoRef)
+	F.Intrinsic.String.RPad(V.Local.sMnoRef," ",10,V.Local.sMnoRef)
+
+	F.Intrinsic.String.Concat("select Quantity, Nest_Qty, OrderQuantity,Complete,Good_Pcs, Scrap_Pcs,MatlSeq, LaborSeq from Lantek_Wos where MNOREF='",V.Local.sMnoRef,"' and LaborSeq='",V.Local.sBDFRowDataValues(1).Trim,"' and Schedule='",V.Args.SCHED,"'",V.Local.sselOps)
+	F.ODBC.Connection!Con.OpenRecordsetRW("rstJobOps",V.Local.sSelOps)
+		F.Intrinsic.Control.If(V.ODBC.Con!rstJobOps.EOF,=,False)
+			V.Local.sMatSeq.Set(V.ODBC.Con!rstJobOps.FieldValtrim!MatlSeq)
+			V.Local.sLabSeq.Set(V.ODBC.Con!rstJobOps.FieldValTrim!LaborSeq)
+			F.Intrinsic.Math.Add(V.Local.sBDFRowDataValues(2),V.ODBC.Con!rstJobOps.FieldVal!Good_Pcs,V.Local.fGoodPcs)
+			F.Intrinsic.Math.Add(V.Local.sBDFRowDataValues(3),V.ODBC.Con!rstJobOps.FieldVal!Scrap_Pcs,V.Local.fScrapPcs)
+			F.Intrinsic.Math.Add(V.Local.fGoodPcs,V.Local.fScrapPcs,V.Local.fTotalPcs)
+			F.Intrinsic.Math.Mult(V.ODBC.Con!rstJobOps.FieldVal!Quantity,V.ODBC.Con!rstJobOps.FieldVal!Nest_Qty,V.Local.fTotalOnNest)
+
+			' if sched/suff/seq qty complete, set sched/suff/seq closed
+			F.Intrinsic.Control.If(V.Local.fTotalPcs,>=,V.Local.fTotalOnNest)
+				V.Local.bNestComplete.Set(True)
+				F.Intrinsic.String.Concat("update Job_CT_FLX_SCHD set Flag_Closed='Y' where Schedule='",V.Local.sSched,"' and Schedule_Suffix='",V.Local.sSchedSuf,"'",V.Local.sSel)
+				F.ODBC.Connection!Con.Execute(V.Local.sSel)
+				V.Local.bNestComplete.Set(True)
+			F.Intrinsic.Control.Endif
+
+		F.Intrinsic.Control.EndIf
+	F.ODBC.Con!rstJobOps.Close
+
+	V.Local.fTotalPcs.Set(0)
+	V.Local.fPcs.Set(0)
+
+	'if qty is complete, verify qty for Job
+	F.Intrinsic.String.Concat("select Units_Open from Job_Operations where Job='",V.Local.sJob,"' and Suffix='",V.Local.sSuffix,"' and Seq='",V.Local.sLabSeq.Trim,"'",V.Local.sSel)
+	F.ODBC.Connection!Con.OpenRecordsetRO("rstSel",V.Local.sSel)
+		F.Intrinsic.Control.If(V.ODBC.Con!rstSel.EOF,=,False)
+			V.Local.fTotalPcs.Set(V.ODBC.Con!rstSel.FieldVal!Units_Open)
+		F.Intrinsic.Control.EndIf
+	F.ODBC.Con!rstSel.Close
+
+	F.Intrinsic.String.Concat("select sum(Qty_Complete) as Qty_Complete from Lantek_Wos where MNOREF='",V.Local.sMnoRef,"' and LaborSeq='",V.Local.sLabSeq.Trim,"'",V.Local.sSel)
+	F.ODBC.Connection!Con.OpenRecordsetRO("rstSel",V.Local.sSel)
+		F.Intrinsic.Control.If(V.ODBC.Con!rstSel.EOF,=,False)
+			V.Local.fPcs.Set(V.ODBC.Con!rstSel.FieldVal!Qty_Complete)
+		F.Intrinsic.Control.EndIf
+	F.ODBC.Con!rstSel.Close
+
+	'if job qty is complete, close the material seq
+'	F.Intrinsic.Control.If(V.Local.fPcs,=,V.Local.fTotalPcs)
+	' if the total # of pieces complete is >= the order qty and <= 110% of the order qty, the job is complete
+	F.Intrinsic.Math.Mult(V.Local.fTotalPcs,1.10,V.Local.fPctAbove)
+	F.Intrinsic.Control.If(V.Local.fPcs,=>,V.Local.fTotalPcs)
+	F.Intrinsic.Control.AndIf(V.Local.fPcs,<=,V.Local.fPctAbove)
+		V.Local.bJobComplete.Set(True)
+		F.Intrinsic.String.Concat("update Job_Operations set Flag_Closed='Y' where Job='",V.Local.sJob.Trim,"' and Suffix='",V.Local.sSuffix.Trim,"' and Seq='",V.Local.sMatSeq,"'",V.Local.sSel)
+		F.ODBC.Connection!Con.Execute(V.Local.sSel)
+
+	F.Intrinsic.Control.Else
+		V.Local.bJobComplete.Set(False)
+	F.Intrinsic.Control.EndIf
+
+	'if any job not complete, give message asking if they really want to close the seqs
+	F.Intrinsic.Control.If(V.Local.bJobComplete,=,False)
+		F.Intrinsic.String.Concat(V.Local.sMsg,V.Ambient.NewLine,"Qty Required for ","JOB: ",V.Passed.000004," - SEQ: ",V.Local.sSeq," is ",V.Local.fTotalPcs,V.Ambient.NewLine,V.Local.sMsg)
+	F.Intrinsic.Control.EndIf
+
+F.Intrinsic.Control.Next(V.Local.iFor)
+
+
+F.Intrinsic.Control.If(V.Local.sMsg.Trim,<>,"")
+	F.Intrinsic.UI.MsgBoxext("",V.Local.sMsg,"26*!*Leave*!*Cancel")
+
+	'if they don't really want to close the seq, reset the variable to "N"
+	F.Intrinsic.Control.If(Variable.Ambient.AltBoxClick,=,4)
+		V.Passed.777777.Set(1)
+		F.Intrinsic.File.String2File(V.Local.sCloseTxt,"N")
+		F.Intrinsic.Control.CallSub(Unload)
+
+	F.Intrinsic.Control.elseIf(Variable.Ambient.AltBoxClick,=,3)
+		F.Intrinsic.File.String2File(V.Local.sCloseTxt,"Y")
+		V.Passed.000003.Set("N")
+		V.Passed.000008.Set("Y")
+
+	'if they do really want to close the seq
+	F.Intrinsic.Control.Else
+		F.Intrinsic.File.String2File(V.Local.sCloseTxt,"Y")
+		F.Intrinsic.String.StripCharacters(V.Passed.000004,V.Local.sJob)
+		F.Intrinsic.String.RPad(V.Local.sJob," ",10,V.Local.sJob)
+
+	F.Intrinsic.Control.For(V.Local.iFor,0,V.Local.iRowCnt,1)
+		F.Intrinsic.Control.If(V.Local.sBDFRowDataValues(5),=,"Y")
+			'set close flag on Lantek_Wos
+			F.Intrinsic.String.Concat("update Lantek_Wos set Complete='1' where MNOREF='",V.Local.sJob,"' and LaborSeq='",V.Local.sSeq,"' and Schedule='",V.Args.SCHED,"'",V.Local.sSel)
+			F.ODBC.Connection!Con.Execute(V.Local.sSel)
+		F.Intrinsic.Control.endif
+	F.Intrinsic.Control.Next(V.Local.iFor)
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Else
+	F.Intrinsic.File.String2File(V.Local.sCloseTxt,"Y")
+F.Intrinsic.Control.EndIf
+
+
+F.Intrinsic.Variable.AddRV("NestComplete",V.Local.bNestComplete)
+F.Intrinsic.Variable.AddRV("JobComplete",V.Local.bJobComplete)
+
+
+
+Program.Sub.Multi_VerifyComplete.End
+
+Program.Sub.Multi_QtyComplete.Start
+
+
+V.Local.sselOps.Declare(String)
+V.Local.fGoodPcs.Declare(Float)
+V.Local.fScrapPcs.Declare(Float)
+V.Local.bNestComplete.Declare(Boolean)
+V.Local.sSched.Declare(String)
+V.Local.sSel.Declare(String)
+V.Local.sMnoRef.Declare(String)
+V.Local.fTotalPcs.Declare(Float)
+V.Local.fPcs.Declare(Float)
+V.Local.fTotalOnNest.Declare(Float)
+V.Local.sLabSeq.Declare(String)
+V.Local.bJobComplete.Declare(Boolean)
+V.Local.sComplete.Declare(String)
+V.Local.sMatSeq.Declare(String)
+V.Local.fOrderQty.Declare(Float)
+V.Local.smsg.Declare(String)
+V.Local.sSchedSuf.Declare(String)
+V.Local.sSchedSeq.Declare(String)
+V.Local.fPctAbove.Declare(Float)
+
+F.Intrinsic.String.Concat(V.Passed.009990.Trim,V.Passed.009991.Trim,V.Local.sMnoRef)
+
+'get schedule that employee is logged into
+F.Intrinsic.String.Concat("select Schedule,ScheduleSuffix from Lantek_SchedInUse where Employee='",V.Passed.009993,"' and Trmnl='",V.Caller.Terminal,"'",V.Local.sSel)
+F.ODBC.Connection!Con.OpenLocalRecordsetRO("rstSel",V.Local.sSel)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstSel.eof,=,False)
+		V.Local.sSched.Set(V.ODBC.Con!rstSel.FieldValTrim!Schedule)
+		V.Local.sSchedSuf.Set(V.ODBC.Con!rstSel.FieldValTrim!ScheduleSuffix)
+
+	' if not logged into a flex achedule, exit
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+F.ODBC.Con!rstSel.Close
+
+F.Intrinsic.String.Concat("select Qty_Complete, Quantity, Nest_Qty, OrderQuantity,Complete,Good_Pcs, Scrap_Pcs, MatlSeq,LaborSeq,ScheduleSeq,Complete from Lantek_Wos where MnoRef='",V.Local.sMnoRef,"'  and LaborSeq='",V.Passed.009992,"' and Schedule='",V.Local.sSched,"'",V.Local.sselOps)
+F.ODBC.Connection!Con.OpenRecordsetRW("rstJobOps",V.Local.sSelOps)
+	F.Intrinsic.Control.If(V.ODBC.Con!rstJobOps.EOF,=,False)
+
+		'even if QTY is not sufficient, if they decided to close the wo seq, then the nest and job seq are complete
+		F.Intrinsic.Control.If(V.ODBC.Con!rstJobOps.FieldVal!Complete,=,True)
+			V.Local.bNestComplete.Set(True)
+			V.Local.bJobComplete.Set(True)
+		F.Intrinsic.Control.EndIf
+
+		V.Local.sLabSeq.Set(V.ODBC.Con!rstJobOps.FieldValTrim!LaborSeq)
+		V.Local.sMatSeq.Set(V.ODBC.Con!rstJobOps.FieldValTrim!MatlSeq)
+		V.Local.sSchedSeq.Set(V.ODBC.Con!rstJobOps.FieldValTrim!ScheduleSeq)
+
+		' if nest is considered complete, set good to qty from Lantek_WOS
+'		F.Intrinsic.Control.If(V.Local.bNestComplete,=,True)
+'			V.Local.fGoodPcs.Set(V.ODBC.Con!rstJobOps.FieldValTrim!OrderQuantity)
+'		F.Intrinsic.Control.Else
+		F.Intrinsic.Math.Add(V.Passed.000001,V.ODBC.Con!rstJobOps.FieldVal!Good_Pcs,V.Local.fGoodPcs)
+'		F.Intrinsic.Control.endif
+
+		F.Intrinsic.Math.Add(V.Passed.000002,V.ODBC.Con!rstJobOps.FieldVal!Scrap_Pcs,V.Local.fScrapPcs)
+		F.Intrinsic.Math.Add(V.Local.fGoodPcs,V.Local.fScrapPcs,V.Local.fTotalPcs)
+
+		F.Intrinsic.Math.Mult(V.ODBC.Con!rstJobOps.FieldVal!Quantity,V.ODBC.Con!rstJobOps.FieldVal!Nest_Qty,V.Local.fTotalOnNest)
+		V.Local.fOrderQty.Set(V.ODBC.Con!rstJobOps.FieldVal!OrderQuantity)
+
+		'if QTY is sufficient, then Nest Seq is complete
+		F.Intrinsic.Control.If(V.Local.fTotalPcs,>=,V.Local.fTotalOnNest)
+			F.Intrinsic.String.Concat("update Job_CT_FLX_SCHD set Flag_Closed='Y' where Schedule='",V.Local.sSched,"' and Schedule_Suffix='",V.Local.sSchedSuf,"' and Schedule_Seq='",V.Local.sSchedSeq,"'",V.Local.sSel)
+			F.ODBC.Connection!Con.Execute(V.Local.sSel)
+			F.ODBC.Con!rstJobOps.Set!Complete(1)
+			V.Local.bNestComplete.Set(True)
+		F.Intrinsic.Control.Endif
+
+		F.ODBC.Con!rstJobOps.Set!Qty_Complete(V.Local.fTotalPcs)
+		F.ODBC.Con!rstJobOps.Set!Good_Pcs(V.Local.fGoodPcs)
+		F.ODBC.Con!rstJobOps.Set!Scrap_Pcs(V.Local.fScrapPcs)
+		F.ODBC.Con!rstJobOps.Update
+
+
+'		V.Local.fTotalPcs.Set(0)
+'		V.Local.fPcs.Set(0)
+
+		'if qty is complete, verify qty for Job/nest
+'		F.Intrinsic.String.Concat("select sum(Qty_Complete) as Qty_Complete from Lantek_Wos where MNOREF='",V.Local.sMnoRef,"' and LaborSeq='",V.Passed.009992.Trim,"'",V.Local.sSel)
+'		F.ODBC.Connection!Con.OpenRecordsetRO("rstSel",V.Local.sSel)
+'			F.Intrinsic.Control.If(V.ODBC.Con!rstSel.EOF,=,False)
+'				V.Local.fPcs.Set(V.ODBC.Con!rstSel.FieldVal!Qty_Complete)
+'			F.Intrinsic.Control.EndIf
+'		F.ODBC.Con!rstSel.Close
+
+'		F.Intrinsic.Control.If(V.Local.fPcs,>=,V.Local.fOrderQty)
+		F.Intrinsic.Math.Mult(V.Local.fTotalOnNest,1.10,V.Local.fPctAbove)
+		F.Intrinsic.Control.If(V.Local.fTotalPcs,=>,V.Local.fTotalOnNest)
+		F.Intrinsic.Control.AndIf(V.Local.fTotalPcs,<=,V.Local.fPctAbove)
+			V.Local.bJobComplete.Set(True)
+		F.Intrinsic.Control.Else
+			V.Local.bJobComplete.Set(False)
+		F.Intrinsic.Control.EndIf
+
+		'if job qty is complete, close the material seq
+		F.Intrinsic.Control.If(V.Local.bJobComplete,=,True)
+			F.Intrinsic.String.Concat("update Job_Operations set Flag_Closed='Y' where Job='",V.Passed.009990.Trim,"' and Suffix='",V.Passed.009991.Trim,"' and Seq='",V.Local.sMatSeq,"'",V.Local.sSel)
+			F.ODBC.Connection!Con.Execute(V.Local.sSel)
+
+			F.Intrinsic.String.Concat("update Job_Operations set Flag_Closed='Y' where Job='",V.Passed.009990.Trim,"' and Suffix='",V.Passed.009991.Trim,"' and Seq='",V.Local.sLabSeq,"'",V.Local.sSel)
+			F.ODBC.Connection!Con.Execute(V.Local.sSel)
+
+'			F.Intrinsic.String.Concat("update Job_Operations set units_Complete='",V.Local.fOrderQty,"' where Job='",V.Passed.009990.Trim,"' and Suffix='",V.Passed.009991.Trim,"' and Seq='",V.Local.sLabSeq,"'",V.Local.sSel)
+			F.Intrinsic.String.Concat("update Job_Operations set units_Complete='",V.Local.fTotalPcs,"' where Job='",V.Passed.009990.Trim,"' and Suffix='",V.Passed.009991.Trim,"' and Seq='",V.Local.sLabSeq,"'",V.Local.sSel)
+			F.ODBC.Connection!Con.Execute(V.Local.sSel)
+		F.Intrinsic.Control.EndIf
+
+
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.CallSub(Unload)
+	F.Intrinsic.Control.EndIf
+
+F.ODBC.Con!rstJobOps.Close
+
+F.Intrinsic.Variable.AddRV("NestComplete",V.Local.bNestComplete)
+F.Intrinsic.Variable.AddRV("JobComplete",V.Local.bJobComplete)
+
+
+
+Program.Sub.Multi_QtyComplete.End
+
+Program.Sub.LastMultiSched.Start
+
+V.Local.sMnoRef.Declare(String)
+V.Local.sSel.Declare(String)
+V.Local.iCount.Declare(Long)
+
+F.Intrinsic.String.Concat(V.Passed.009990.Trim,V.Passed.009991.Trim,V.Local.sMnoRef)
+
+'get shcedule that employee is logged into
+F.Intrinsic.String.Concat("select Jobs_On_Sched, Jobs_Updated, Schedule from Lantek_SchedInUse where Employee='",V.Passed.009993,"' and Trmnl='",V.Caller.Terminal,"'",V.Local.sSel)
+F.ODBC.Connection!Con.OpenLocalRecordsetRW("rstSel",V.Local.sSel)
+
+	F.Intrinsic.Control.If(V.ODBC.Con!rstSel.EOF,=,False)
+		F.Intrinsic.Math.Add(V.ODBC.Con!rstSel.FieldVal!Jobs_Updated,1,V.Local.iCount)
+
+		F.Intrinsic.Control.If(V.Local.iCount,=,V.ODBC.Con!rstSel.FieldVal!Jobs_On_Sched)
+			F.Intrinsic.Variable.AddRV("LASTSEQ","True")
+			F.Intrinsic.Variable.AddRV("SCHED",V.ODBC.Con!rstSel.FieldVal!Schedule)
+
+		F.Intrinsic.Control.Else
+			F.ODBC.Con!rstSel.Set!Jobs_Updated(V.Local.iCount)
+			F.ODBC.Con!rstSel.Update
+
+			F.Intrinsic.Variable.AddRV("LASTSEQ","False")
+			F.Intrinsic.Variable.AddRV("SCHED",V.ODBC.Con!rstSel.FieldVal!Schedule)
+
+		F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.CallSub(Unload)
+
+	F.Intrinsic.Control.EndIf
+F.ODBC.Con!rstSel.Close
+
+Program.Sub.LastMultiSched.End
+
+
