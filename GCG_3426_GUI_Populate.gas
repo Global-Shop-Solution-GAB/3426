@@ -1,0 +1,41 @@
+Program.Sub.ScreenSU.Start
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+
+' on multi line populate
+F.Intrinsic.Control.If(V.Caller.Hook,=,15910)
+
+	' always set "Use Estimated to "N"
+'	V.Passed.000007.Set("N")
+
+	' toggle close all
+	F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000084,"LOCK",1)
+	'F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000084,"HIDE",1)
+
+	' toggle use estimate
+	F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000086,"LOCK",1)
+	'F.Intrinsic.UI.ChangeCallerProperty(V.Passed.000086,"HIDE",1)
+
+' on single line populate
+F.Intrinsic.Control.ElseIf(V.Caller.Hook,=,15840)
+
+	' hide "Estimated Pieces"
+	Function.Intrinsic.UI.ChangeCallerProperty(Variable.passed.000014,"HIDE",1)
+	Function.Intrinsic.UI.ChangeCallerProperty(Variable.passed.000007,"HIDE",1)
+
+F.Intrinsic.Control.EndIf
+'
+'F.Intrinsic.UI.Sleep(2)
+F.Intrinsic.Control.End
+
+Program.Sub.Main.End
+
+Program.Sub.Comments.Start
+${$0$}$Test$}$JCT$}$12/10/2012
+Program.Sub.Comments.End
+
