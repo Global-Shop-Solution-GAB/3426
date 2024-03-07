@@ -1,0 +1,886 @@
+Program.Sub.ScreenSU.Start
+gui.Form1..create
+gui.Form1..caption("")
+gui.Form1..size(2805,1440)
+gui.Form1..position(0,0)
+gui.Form1..alwaysontop(False)
+gui.Form1..fontname("Arial")
+gui.Form1..fontsize(8)
+gui.Form1..forecolor(0)
+gui.Form1..fontstyle(,,,,)
+gui.Form1..BackColor(-2147483633)
+gui.Form1..controlbox(True)
+gui.Form1..maxbutton(True)
+gui.Form1..minbutton(True)
+gui.Form1..mousepointer(0)
+gui.Form1..moveable(True)
+gui.Form1..sizeable(True)
+gui.Form1..ShowInTaskBar(True)
+gui.Form1..titlebar(True)
+gui.Form1.lbl1.create(label,"Please Wait",True,1935,255,1,395,350,True,2,Arial,10,-2147483633,0)
+gui.Form1.lbl1.fontstyle(True,False,False,False)
+gui.Form1.lbl2.create(label,"Loading Schedule",True,1935,255,1,425,110,True,2,Arial,10,-2147483633,0)
+gui.Form1.lbl2.fontstyle(True,False,False,False)
+gui.Form1.lbl3.create(label,"Subroutine",True,1935,240,0,360,600,True,2,Arial,10,-2147483633,0)
+gui.Form1.lbl3.fontstyle(True,False,False,False)
+
+
+Program.Sub.ScreenSU.End
+
+Program.Sub.Preflight.Start
+Variable.UDT.WOS.Define("NestID",String,"NEST_ID")
+Variable.UDT.WOS.Define("NestSuffix",String)
+Variable.UDT.WOS.Define("Increment",String)
+Variable.UDT.WOS.Define("Job",String)
+Variable.UDT.WOS.Define("Suffix",String)
+Variable.UDT.WOS.Define("BegDate",String)
+Variable.UDT.WOS.Define("EndDate",String)
+Variable.UDT.WOS.Define("PartLoc",String)
+Variable.UDT.WOS.Define("Nest_Qty",Float,"NEST_QTY")
+Variable.UDT.WOS.Define("FName",String,"FNAME")
+Variable.UDT.WOS.Define("FType",String,"FTYPE")
+Variable.UDT.WOS.Define("PrdRef",String,"PRDREF")
+Variable.UDT.WOS.Define("PrdName",String,"PRDNAME")
+Variable.UDT.WOS.Define("Quantity",Float,"QUANTITY")
+Variable.UDT.WOS.Define("MnORef",String,"MNOREF")
+Variable.UDT.WOS.Define("Order_Qty",Float,"ORDERQUANTITY")
+Variable.UDT.WOS.Define("Schedule",String,"SCHEDULE")
+Variable.UDT.WOS.Define("Schedule_Suffix",String,"SCHEDULESUFFIX")
+Variable.UDT.WOS.Define("TagNo",String,"TAGNO")
+Variable.UDT.WOS.Define("WC",String,"WC")
+Variable.UDT.WOS.Define("ScheduleSeq",string,"SCHEDULESEQ")
+Variable.UDT.WOS.Define("LaborSeq",string,"LABORSEQ")
+Variable.UDT.WOS.Define("MatlSeq",string,"MATLSEQ")
+Variable.UDT.WOS.Define("DateSchedFrm",Date,"DATESCHEDFROM")
+Variable.UDT.WOS.Define("SortOrder",String)
+Variable.UDT.WOS.Define("BegDueDate",String)
+Variable.UDT.WOS.Define("EndDueDate",String)
+Variable.UDT.WOS.Define("FillerA",String)
+Variable.UDT.WOS.Define("FillerB",String)
+Variable.UDT.WOS.Define("Complete",Boolean,"Complete")
+Variable.UDT.WOS.Define("Remove",String)
+Variable.UDT.WOS.Define("File",String)
+
+Variable.uGlobal.uWOS.Declare("WOS")
+Variable.UDT.Files.Define("File",String)
+Variable.UDT.Files.Define("Date",Date)
+Variable.uGlobal.uFiles.Declare("Files")
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+'F.Intrinsic.Control.SetErrorHandler("Main_Err")
+'F.Intrinsic.Control.ClearErrors
+'
+'V.Local.sError.Declare(String)
+
+'Coded by: JCT
+'Project Start Date: 06/01/2011
+
+'
+'V.Local.fTimerS.Declare(Float)
+'V.Local.fTimerN.Declare(Float)
+'V.Local.sOpen.Declare(String)
+'V.Local.iPID.Declare(Long)
+'V.Local.dCurrentTime.Declare(Date)
+'V.Local.dNextTime.Declare(Date)
+'V.Local.iHour.Declare(Long)
+'V.Local.sHour.Declare(String)
+'V.Local.sMin.Declare(String)
+'V.Local.iMin.Declare(Long)
+'V.Local.sNow.Declare(String)
+'V.Local.sLoadSchedLog.Declare(String)
+'V.Local.bExists.Declare(Boolean)
+'V.Local.sCheckTxt.Declare(String)
+'V.Local.sSchedInUse.Declare(String)
+'V.Local.bInUse.Declare(Boolean)
+'
+'F.Intrinsic.String.Concat(V.System.Temp,"\SchedInUse.txt",V.Local.sSchedInUse)
+'F.Intrinsic.String.Concat(V.Caller.FilesDir,"\Load Schedule Log.txt",V.Local.sLoadSchedLog)
+'F.Intrinsic.File.Exists(V.Local.sLoadSchedLog,V.Local.bExists)
+'
+'' get current hour and min
+'F.Intrinsic.Date.Hour(V.Ambient.Now,V.Local.iHour)
+'F.Intrinsic.Date.Minute(V.Ambient.Now,V.Local.iMin)
+'
+'' pad hour and min for formatting
+'F.Intrinsic.String.LPad(V.Local.iHour,"0",2,V.Local.sHour)
+'F.Intrinsic.String.LPad(V.Local.iMin,"0",2,V.Local.sMin)
+'
+''concatenate into time
+'F.Intrinsic.String.Concat(V.Local.sHour,V.Local.sMin,V.Local.sNow)
+'F.Intrinsic.String.Concat("Checked time at ",V.Ambient.Now," and Hour is ",V.Local.iHour,V.Ambient.NewLine,V.Local.sCheckTxt)
+'
+'' convert current time and 11:58pm into time values
+'F.Intrinsic.Date.ConvertTString("2358","HHNN",V.Local.dNextTime)
+'F.Intrinsic.Date.ConvertTString(V.Local.sNow,"HHNN",V.Local.dCurrentTime)
+'
+'F.Intrinsic.Control.If(V.Local.bExists,=,False)
+'	F.Intrinsic.File.String2File(V.Local.sLoadSchedLog,V.Local.sCheckTxt)
+'F.Intrinsic.Control.Else
+'	F.Intrinsic.File.Append2File(V.Local.sLoadSchedLog,V.Local.sCheckTxt)
+'F.Intrinsic.Control.EndIf
+'
+'' get difference in time between now and 11:58
+'F.Intrinsic.Date.DateDiff("N",V.Local.dCurrentTime,V.Local.dNextTime,V.Local.iHour)
+'
+'' if within 5 minuntes of 11:58 pm, go ahead and end for the day.
+'F.Intrinsic.Control.If(V.Local.iHour,<=,5)
+'	F.Intrinsic.String.Concat("Checked time at ",V.Ambient.Now," and Hour is ",V.Local.iHour," GAB script is closing",V.Ambient.NewLine,V.Local.sCheckTxt)
+'	F.Intrinsic.Control.If(V.Local.bExists,=,False)
+'		F.Intrinsic.File.String2File(V.Local.sLoadSchedLog,V.Local.sCheckTxt)
+'	F.Intrinsic.Control.Else
+'		F.Intrinsic.File.Append2File(V.Local.sLoadSchedLog,V.Local.sCheckTxt)
+'	F.Intrinsic.Control.EndIf
+'
+'	F.Intrinsic.Control.CallSub(Unload)
+'F.Intrinsic.Control.EndIf
+'
+'F.Intrinsic.String.Concat(V.Caller.PluginsDir,"\GAB\GAS\GCG_Load_Schedule.gas",V.Local.sOpen)
+'
+''Timer
+'F.Intrinsic.Control.Do
+''	F.Intrinsic.UI.Timer(V.Local.fTimerS)
+''	F.Intrinsic.Math.Add(V.Local.fTimerS,300,V.Local.fTimerS)
+'	V.uGlobal.uWOS.Redim(-1,-1)
+	F.Intrinsic.Control.CallSub(Writefile)
+	F.Intrinsic.Control.CallSub(Unload)
+'	F.Intrinsic.UI.Timer(V.Local.fTimerS)
+'	F.Intrinsic.Math.Add(V.Local.fTimerS,300,V.Local.fTimerS)
+'	F.Intrinsic.Control.Do
+'		F.Intrinsic.UI.Timer(V.Local.fTimerN)
+'		F.Intrinsic.UI.Sleep(1)
+'		F.Intrinsic.Control.If(V.Local.fTimerN,>,V.Local.fTimerS)
+'
+'			' if the InUse file does not exist, it will call itself, otherwise it will reset the timer and loop for the next 5 minutes
+'			F.Intrinsic.File.Exists(V.Local.sSchedInUse,V.Local.bInUse)
+'			F.Intrinsic.Control.If(V.Local.bInUse,=,False)
+'
+'				F.Global.General.CallAsyncGAS(V.Local.sOpen,V.Local.iPID)
+'				F.Intrinsic.Control.Label("Main_Err")
+'				F.Intrinsic.Control.If(V.Ambient.ErrorNumber,<>,0)
+'					F.Intrinsic.Control.ClearErrors
+'				F.Intrinsic.Control.Else
+'					F.Intrinsic.Control.CallSub(Unload)
+'				F.Intrinsic.Control.EndIf
+'
+'			F.Intrinsic.Control.Else
+'				F.Intrinsic.Math.Add(V.Local.fTimerS,300,V.Local.fTimerS)
+'			F.Intrinsic.Control.EndIf
+'		
+'		F.Intrinsic.Control.EndIf
+'	F.Intrinsic.Control.Loop
+'F.Intrinsic.Control.Loop
+
+
+
+Program.Sub.Main.End
+
+Program.Sub.LoadSchedule.Start
+F.Intrinsic.Control.SetErrorHandler("LoadSchedule_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+
+V.Local.sLoadFile.Declare(String)
+V.Local.sLoadData.Declare(String)
+V.Local.sFiller.Declare(String)
+V.Local.iFor.Declare(Long)
+V.Local.sUpdate.Declare(String)
+V.Local.sCurrentNest.Declare(String)
+V.Local.sChildJob.Declare(String)
+V.Local.sParentJob.Declare(String)
+V.Local.sParentSuffx.Declare(String)
+V.Local.sJobOp.Declare(String)
+V.Local.iSeq.Declare(Long)
+V.Local.sSeq.Declare(String)
+V.Local.sSel.Declare(String)
+V.Local.sSelCut.Declare(String)
+V.Local.sDelete.Declare(String)
+V.Local.sSchedule.Declare(String)
+V.Local.sValue.Declare(String)
+
+' ************************** added 1/11/2013 jrm *******************************************
+Gui.Form1.lbl3.Caption("Load Schedule")
+
+' don't need to re-load lines that were deleted
+F.Intrinsic.Variable.UDTMultiFlag(V.uGlobal.uWOS!Remove,"TRUE")
+F.Intrinsic.Variable.UDTDeleteFlagged(V.uGlobal.uWOS)
+
+
+' if nothing left, exit this sub
+F.Intrinsic.Control.If(V.uGlobal.uWOS!Job.UBound,=,-1)
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+
+F.Intrinsic.String.Concat(V.Caller.FilesDir,"\SCHED.txt",V.Local.sLoadFile)
+'Nest ID,Nest Suffix, Increment, JOb, Suffix, Mat Seq, filler, Job, Suffix, Lab Seq, Beg Date, End Date, filler, wc, Part,Part Loc, sort orderm beginning due date, Ending Due Date
+
+F.Intrinsic.String.LPad(V.Local.sFiller," ",3,V.Local.sFiller)
+	Function.Intrinsic.Variable.UDTMultiSeekSet(V.uGlobal.uWOS!Schedule_Suffix,"",V.uGlobal.uWOS!Schedule_Suffix,V.Local.sFiller)
+F.Intrinsic.String.LPad(V.Local.sFiller," ",5,V.Local.sFiller)
+	Function.Intrinsic.Variable.UDTMultiSeekSet(V.uGlobal.uWOS!FillerA,"",V.uGlobal.uWOS!FillerA,V.Local.sFiller)
+F.Intrinsic.String.LPad(V.Local.sFiller," ",25,V.Local.sFiller)
+	Function.Intrinsic.Variable.UDTMultiSeekSet(V.uGlobal.uWOS!FillerB,"",V.uGlobal.uWOS!FillerB,V.Local.sFiller)
+	Function.Intrinsic.Variable.UDTMultiSeekSet(V.uGlobal.uWOS!BegDueDate,"",V.uGlobal.uWOS!BegDueDate,"000000")
+	Function.Intrinsic.Variable.UDTMultiSeekSet(V.uGlobal.uWOS!EndDueDate,"",V.uGlobal.uWOS!EndDueDate,"999999")
+F.Intrinsic.String.LPad(V.Local.sFiller," ",2,V.Local.sFiller)
+	Function.Intrinsic.Variable.UDTMultiSeekSet(V.uGlobal.uWOS!PartLoc,"",V.uGlobal.uWOS!PartLoc,V.Local.sFiller)
+
+'for every record
+F.Intrinsic.Control.For(V.Local.iFor,V.uGlobal.uWOS!Job.LBound,V.uGlobal.uWOS!Job.UBound,1)
+'	F.Intrinsic.String.LPad(V.uGlobal.uWOS(v.Local.iFor)!NestID,"0",6,V.uGlobal.uWOS(v.Local.iFor)!NestID)
+	F.Intrinsic.String.RPad(V.uGlobal.uWOS(v.Local.iFor)!MnORef," ",9,V.uGlobal.uWOS(v.Local.iFor)!MnORef)
+	F.Intrinsic.String.Left(V.uGlobal.uWOS(v.Local.iFor)!MnORef,6,V.uGlobal.uWOS(v.Local.iFor)!Job)
+	F.Intrinsic.String.Right(V.uGlobal.uWOS(v.Local.iFor)!MnORef,3,V.uGlobal.uWOS(v.Local.iFor)!Suffix)
+	F.Intrinsic.String.RPad(V.uGlobal.uWOS(v.Local.iFor)!PrdRef," ",20,V.uGlobal.uWOS(v.Local.iFor)!PrdRef)
+	F.Intrinsic.String.Format(V.uGlobal.uWOS(v.Local.iFor)!DateSchedFrm,"mmddyy",V.uGlobal.uWOS(v.Local.iFor)!BegDate)
+	F.Intrinsic.String.Format(V.uGlobal.uWOS(v.Local.iFor)!DateSchedFrm,"mmddyy",V.uGlobal.uWOS(v.Local.iFor)!EndDate)
+	F.Intrinsic.String.LPad(V.uGlobal.uWOS(v.Local.iFor)!SortOrder,"0",3,V.uGlobal.uWOS(v.Local.iFor)!SortOrder)
+
+	'if a new nest, get first job/suffix as parent
+	F.Intrinsic.Control.If(V.Local.sCurrentNest,<>,V.uGlobal.uWOS(v.Local.iFor)!NestID)
+		V.Local.sParentJob.Set(V.uGlobal.uWOS(v.Local.iFor)!Job)
+		V.Local.sParentSuffx.Set(V.uGlobal.uWOS(v.Local.iFor)!Suffix)
+
+		'find highest seq for parent job/suffix
+		F.Intrinsic.String.Concat("select MAX(SEQ) as SEQ from JOB_OPERATIONS where JOB='",V.Local.sParentJob,"' and SUFFIX='",V.Local.sParentSuffx,"' and SEQ<'990000'",V.Local.sSel)
+		F.ODBC.Connection!con.OpenRecordsetRO("rstSel",V.Local.sSel)
+			F.Intrinsic.Control.If(V.ODBC.con!rstSel.EOF,=,False)
+				V.Local.iSeq.Set(V.ODBC.con!rstSel.FieldValTrim!SEQ)
+			F.Intrinsic.Control.EndIf
+		F.ODBC.con!rstSel.Close
+
+		'set job header records for parent job/suffix
+		F.Intrinsic.String.Concat("update JOB_HEADER set SCHEDULE_DIR='0' where JOB='",V.uGlobal.uWOS(v.Local.iFor)!Job,"' and SUFFIX='",V.uGlobal.uWOS(v.Local.iFor)!Suffix,"'",V.local.sUpdate)
+		F.ODBC.Connection!con.Execute(V.Local.sUpdate)
+
+		'delete any exiting linked sequences on parent job/suffix
+		F.Intrinsic.String.Concat("delete from JOB_OPERATIONS where JOB='",V.Local.sParentJob,"' and SUFFIX='",V.Local.sParentSuffx,"' and LMO='X'",V.Local.sUpdate)
+		F.ODBC.Connection!con.Execute(V.Local.sUpdate)
+		V.Local.sCurrentNest.Set(V.uGlobal.uWOS(v.Local.iFor)!NestID)
+
+	F.Intrinsic.Control.Else
+		'set job header records for child jobs
+		F.Intrinsic.String.Concat("update JOB_HEADER set SCHEDULE_DIR='1',FILLER4='L' where JOB='",V.uGlobal.uWOS(v.Local.iFor)!Job,"' and SUFFIX='",V.uGlobal.uWOS(v.Local.iFor)!Suffix,"'",V.local.sUpdate)
+		F.ODBC.Connection!con.Execute(V.Local.sUpdate)
+
+		'create link seq on parent job/suffix operations
+		F.Intrinsic.String.Concat(V.uGlobal.uWOS(v.Local.iFor)!Job,V.uGlobal.uWOS(v.Local.iFor)!Suffix,V.Local.sChildJob)
+		F.Intrinsic.Math.Add(V.Local.iSeq,100,V.Local.iSeq)
+		F.Intrinsic.String.LPad(V.Local.iSeq,"0",6,V.Local.sSeq)
+
+		F.Intrinsic.String.Concat("select JOB,SUFFIX,SEQ,PART,LMO,WO_INSERT from JOB_OPERATIONS where JOB='",V.Local.sParentJob,"' and SUFFIX='",V.Local.sParentSuffx,"'",V.Local.sJobOp)
+		F.ODBC.Connection!con.OpenRecordsetRW("rstJobOp",V.Local.sJobOp)
+			F.ODBC.con!rstJobOp.AddNew
+				F.ODBC.con!rstJobOp.Set!JOB(V.Local.sParentJob)
+				F.ODBC.con!rstJobOp.Set!SUFFIX(V.Local.sParentSuffx)
+				F.ODBC.con!rstJobOp.Set!SEQ(V.Local.sSeq)
+				F.ODBC.con!rstJobOp.Set!PART(V.Local.sChildJob)
+				F.ODBC.con!rstJobOp.Set!LMO("X")
+				F.ODBC.con!rstJobOp.Set!WO_INSERT("00")
+			F.ODBC.Con!rstJobOp.Update
+		F.ODBC.con!rstJobOp.Close
+
+	F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.String.Concat("select * from JOB_CT_FLX_SCHD where SCHEDULE='",V.uGlobal.uWOS(v.Local.iFor)!Schedule,"' and SCHEDULE_SUFFIX='",V.uGlobal.uWOS(v.Local.iFor)!Schedule_Suffix,"' and JOB='",V.uGlobal.uWOS(v.Local.iFor)!Job,"' and SUFFIX='",V.uGlobal.uWOS(v.Local.iFor)!Suffix,"'",V.Local.sSelCut)
+	F.ODBC.Connection!Con.OpenRecordsetRO("rstCut",V.Local.sSelCut)
+		F.Intrinsic.Control.If(V.ODBC.Con!rstCut.EOF,=,True)
+			F.Intrinsic.Control.If(V.Local.sLoadData.Trim,=,"")
+				F.Intrinsic.String.Concat(V.uGlobal.uWOS(v.Local.iFor)!Schedule,V.uGlobal.uWOS(v.Local.iFor)!Schedule_Suffix,V.uGlobal.uWOS(v.Local.iFor)!ScheduleSeq,V.uGlobal.uWOS(v.Local.iFor)!Job,V.uGlobal.uWOS(v.Local.iFor)!Suffix,V.Local.sLoadData)
+				F.Intrinsic.String.Concat(V.Local.sLoadData,V.uGlobal.uWOS(v.Local.iFor)!MatlSeq,V.uGlobal.uWOS(v.Local.iFor)!FillerA,V.uGlobal.uWOS(v.Local.iFor)!Job,V.uGlobal.uWOS(v.Local.iFor)!Suffix,V.uGlobal.uWOS(v.Local.iFor)!LaborSeq,V.Local.sLoadData)
+				F.Intrinsic.String.Concat(V.Local.sLoadData,V.uGlobal.uWOS(v.Local.iFor)!BegDate,V.uGlobal.uWOS(v.Local.iFor)!EndDate,V.uGlobal.uWOS(v.Local.iFor)!FillerB,V.uGlobal.uWOS(v.Local.iFor)!WC,V.uGlobal.uWOS(v.Local.iFor)!PrdRef,V.Local.sLoadData)
+				F.Intrinsic.String.Concat(V.Local.sLoadData,V.uGlobal.uWOS(v.Local.iFor)!PartLoc,V.uGlobal.uWOS(v.Local.iFor)!SortOrder,V.uGlobal.uWOS(v.Local.iFor)!BegDueDate,V.uGlobal.uWOS(v.Local.iFor)!EndDueDate,V.Local.sLoadData)
+
+			F.Intrinsic.Control.Else
+				F.Intrinsic.String.Concat(V.Local.sLoadData,V.Ambient.NewLine,V.uGlobal.uWOS(v.Local.iFor)!Schedule,V.uGlobal.uWOS(v.Local.iFor)!Schedule_Suffix,V.uGlobal.uWOS(v.Local.iFor)!ScheduleSeq,V.uGlobal.uWOS(v.Local.iFor)!Job,V.uGlobal.uWOS(v.Local.iFor)!Suffix,V.Local.sLoadData)
+				F.Intrinsic.String.Concat(V.Local.sLoadData,V.uGlobal.uWOS(v.Local.iFor)!MatlSeq,V.uGlobal.uWOS(v.Local.iFor)!FillerA,V.uGlobal.uWOS(v.Local.iFor)!Job,V.uGlobal.uWOS(v.Local.iFor)!Suffix,V.uGlobal.uWOS(v.Local.iFor)!LaborSeq,V.Local.sLoadData)
+				F.Intrinsic.String.Concat(V.Local.sLoadData,V.uGlobal.uWOS(v.Local.iFor)!BegDate,V.uGlobal.uWOS(v.Local.iFor)!EndDate,V.uGlobal.uWOS(v.Local.iFor)!FillerB,V.uGlobal.uWOS(v.Local.iFor)!WC,V.uGlobal.uWOS(v.Local.iFor)!PrdRef,V.Local.sLoadData)
+				F.Intrinsic.String.Concat(V.Local.sLoadData,V.uGlobal.uWOS(v.Local.iFor)!PartLoc,V.uGlobal.uWOS(v.Local.iFor)!SortOrder,V.uGlobal.uWOS(v.Local.iFor)!BegDueDate,V.uGlobal.uWOS(v.Local.iFor)!EndDueDate,V.Local.sLoadData)
+			F.Intrinsic.Control.EndIf
+		F.Intrinsic.Control.EndIf
+	F.ODBC.Con!rstCut.Close
+
+F.Intrinsic.Control.Next(V.Local.iFor)
+F.Intrinsic.File.String2File(V.Local.sLoadFile,V.Local.sLoadData)
+F.Global.General.CallWrappersync(6000,"NS!*!52")
+
+F.Intrinsic.Control.For(V.Local.iFor,V.uGlobal.uWOS!Schedule.LBound,V.uGlobal.uWOS!Schedule.UBound,1)
+	F.Intrinsic.String.Concat("update JOB_CT_FLX_SCHD set TAG_NO='",V.uGlobal.uWOS(v.Local.iFor)!TagNo,"' where SCHEDULE='",V.uGlobal.uWOS(v.Local.iFor)!Schedule,"' and SCHEDULE_SUFFIX='",V.uGlobal.uWOS(v.Local.iFor)!Schedule_Suffix,"' and SCHEDULE_SEQ='",V.uGlobal.uWOS(v.Local.iFor)!ScheduleSeq,"'",V.Local.sUpdate)
+	F.ODBC.Connection!Con.Execute(V.Local.sUpdate)
+
+	F.Intrinsic.String.Concat("update ATG_XTRA_WOUF set Task ='",V.uGlobal.uWOS(v.Local.iFor)!TagNo,"' where Job='",V.uGlobal.uWOS(v.Local.iFor)!Job,"' and Suffix='",V.uGlobal.uWOS(v.Local.iFor)!Suffix,"'",V.Local.sUpdate)
+	F.ODBC.Connection!Con.Execute(V.Local.sUpdate)
+
+	F.Intrinsic.String.Concat("select Job, Suffix,User_1 from WO_User_Flds  where Job='",V.uGlobal.uWOS(v.Local.iFor)!Job,"' and Suffix='",V.uGlobal.uWOS(v.Local.iFor)!Suffix,"'",V.Local.sUpdate)
+	F.ODBC.Connection!Con.OpenRecordsetRW("rstWO",V.Local.sUpdate)
+		F.Intrinsic.Control.If(V.ODBC.Con!rstWO.EOF,=,True)
+			F.ODBC.Con!rstWO.AddNew
+				F.ODBC.Con!rstWO.Set!JOB(V.uGlobal.uWOS(v.Local.iFor)!Job)
+				F.ODBC.Con!rstWO.Set!Suffix(V.uGlobal.uWOS(v.Local.iFor)!Suffix)
+		F.Intrinsic.Control.EndIf
+				F.ODBC.Con!rstWO.Set!User_1(V.uGlobal.uWOS(v.Local.iFor)!TagNo)
+			F.ODBC.Con!rstWO.Update
+	F.ODBC.Con!rstWO.Close
+
+F.Intrinsic.Control.Next(V.Local.iFor)
+
+
+F.Intrinsic.Control.ExitSub
+
+F.Intrinsic.Control.Label("LoadSchedule_Err")
+F.Intrinsic.Control.ExitSub
+
+Program.Sub.LoadSchedule.End
+
+Program.Sub.WriteFile.Start
+F.Intrinsic.Control.SetErrorHandler("WriteFile_Err")
+F.Intrinsic.Control.ClearErrors
+
+V.Local.sError.Declare(String)
+
+' *************************** added 01/11/2013 jrm *****************************
+Gui.Form1.lbl3.Caption("Write File")
+
+Gui.Form1..Show
+
+V.Local.sDocName.Declare(String)
+V.Local.sImportDir.Declare(String)
+V.Local.sDir.Declare(String)
+V.Local.iFor.Declare(Long)
+V.Local.bEofNest.Declare(Boolean)
+V.Local.bEofDoc.Declare(Boolean)
+V.Local.bEofPart.Declare(Boolean)
+V.Local.bExists.Declare(Boolean)
+V.Local.iForDocs.Declare(Long)
+V.Local.iForNest.Declare(Long)
+V.Local.iForFile.Declare(Long)
+V.Local.sSet.Declare(String)
+V.Local.sSchedId.Declare(String)
+V.Local.sNestID.Declare(String)
+V.Local.iNestQty.Declare(Long)
+V.Local.sFName.Declare(String)
+V.Local.sFType.Declare(String)
+V.Local.sRet.Declare(String)
+V.Local.sXquery.Declare(String)
+V.Local.sDoc.Declare(String)
+V.Local.sDocBkp.Declare(String)
+V.Local.iRet.Declare(Long)
+V.Local.sTemp.Declare(String)
+V.Local.sUpdate.Declare(String)
+V.Local.sSel.Declare(String)
+V.Local.sRemove.Declare(String)
+V.Local.sJob.Declare(String)
+V.Local.sSuffix.Declare(String)
+V.Local.sFile.Declare(String)
+V.Local.sErrorDocPath.Declare(String)
+V.Local.sErrorLogPath.Declare(String)
+V.Local.iRedim.Declare(Long)
+V.Local.bErrors.Declare(Boolean)
+V.Local.sEmailFile.Declare(String)
+V.Local.sSchedInUse.Declare(String)
+V.Local.bInUse.Declare(Boolean)
+'V.Local.sFilesInError.Declare(String)
+V.Local.sFileList.Declare(String)
+V.Local.dFileDate.Declare(Date)
+V.Local.dLastFileDate.Declare(Date)
+V.Local.sVerify.Declare(String)
+V.Local.bVerify.Declare(Boolean)
+V.Local.sUpdateErrors.Declare(String)
+
+V.uGlobal.uWOS.Redim(-1,-1)
+V.Local.bVerify.Set(True)
+
+'directory where incoming files are found
+F.Intrinsic.String.Concat(V.Caller.PluginsDir,"\Lantek\GSS\FlexScheduleIn\",V.Local.sDir)
+
+' directory where processed files are moved
+F.Intrinsic.String.Concat(V.Caller.PluginsDir,"\Lantek\GSS\FlexScheduleIn\imported",V.Local.sImportDir)
+	F.Intrinsic.File.DirExists(V.Local.sImportDir,V.Local.bExists)
+		F.Intrinsic.Control.If(V.Local.bExists,=,False)
+			F.Intrinsic.File.CreateDir(V.Local.sImportDir)
+		F.Intrinsic.Control.EndIf
+
+' directory for error files
+F.Intrinsic.String.Concat(V.Caller.PluginsDir,"\Lantek\GSS\FlexScheduleIn\Errors",V.Local.sErrorDocPath)
+	F.Intrinsic.File.DirExists(V.Local.sErrorDocPath,V.Local.bExists)
+		F.Intrinsic.Control.If(V.Local.bExists,=,False)
+			F.Intrinsic.File.CreateDir(V.Local.sErrorDocPath)
+		F.Intrinsic.Control.EndIf
+
+' file for Msg notifications
+F.Intrinsic.String.Concat(V.Caller.PluginsDir,"\Lantek\GSS\MsgList.txt",V.Local.sEmailFile)
+
+' get list of incoming files
+F.Intrinsic.File.GetFileList(V.Local.sDir,V.Local.sFileList)
+F.Intrinsic.String.Split(V.Local.sFileList,":",V.Local.sFileList)
+
+' if no files were found, exit this sub
+F.Intrinsic.Control.If(V.Local.sFileList(0).Trim,=,"")
+	Gui.Form1..Visible(false)
+	F.Intrinsic.Control.ExitSub
+F.Intrinsic.Control.EndIf
+
+' need to read files in date/time order
+V.uGlobal.uFiles.Redim(V.Local.sFileList.LBound,V.Local.sFileList.UBound)
+F.Intrinsic.Control.For(V.Local.iForDocs,V.uGlobal.uFiles!File.LBound,V.uGlobal.uFiles!File.UBound,1)
+	F.Intrinsic.String.Concat(V.Caller.PluginsDir,"\Lantek\GSS\FlexScheduleIn\",V.Local.sFileList(v.Local.iForDocs),V.Local.sFile)
+	F.Intrinsic.File.GetFileDateTime(V.Local.sFile,V.Local.dFileDate)
+	V.uGlobal.uFiles(v.Local.iForDocs)!File.Set(V.Local.sFileList(v.Local.iForDocs))
+	V.uGlobal.uFiles(v.Local.iForDocs)!Date.Set(V.Local.dFileDate)
+F.Intrinsic.Control.Next(V.Local.iForDocs)
+
+F.Intrinsic.Variable.UDTMultiQuickSort(V.uGlobal.uFiles!Date,False)
+
+V.Local.sNestID.Redim(0,0)
+V.Local.iNestQty.Redim(0,0)
+
+' only open odbc connection, if files exist
+F.ODBC.Connection!Con.OpenConnection(V.Ambient.PDSN,V.Ambient.PUser,V.Ambient.PPass)
+
+' txt to let script know it is in use
+F.Intrinsic.String.Concat(V.System.Temp,"\SchedInUse.txt",V.Local.sSchedInUse)
+F.Intrinsic.File.Exists(V.Local.sSchedInUse,V.Local.bInUse)
+F.Intrinsic.Control.If(V.Local.bInUse,=,False)
+	F.Intrinsic.File.String2File(V.Local.sSchedInUse,"In Use")
+F.Intrinsic.Control.EndIf
+
+
+' for each document
+F.Intrinsic.Control.For(V.Local.iForDocs,V.uGlobal.uFiles!File.LBound,V.uGlobal.uFiles!File.UBound,1)
+
+	' verify doc is an XML
+	F.Intrinsic.String.Split(V.uGlobal.uFiles(V.Local.iForDocs)!File,".",V.Local.sFile)
+	V.Local.sFile.Set(V.Local.sFile(v.Local.sFile.UBound))
+	F.Intrinsic.Control.If(V.Local.sFile.Ucase,=,"XML")
+		F.Intrinsic.String.Concat("xmlDoc",V.Local.iForDocs,V.Local.sDoc)
+
+		' get file paths
+		F.Intrinsic.String.Concat(V.Local.sDir,V.uGlobal.uFiles(V.Local.iForDocs)!File,V.Local.sDocName)
+		F.Intrinsic.String.Concat(V.Local.sImportDir,"\",V.uGlobal.uFiles(V.Local.iForDocs)!File,V.Local.sDocBkp)
+		F.Intrinsic.String.Concat(V.Caller.PluginsDir,"\Lantek\GSS\FlexScheduleIn\Errors\Errors.txt",V.Local.sErrorLogPath)
+		F.Intrinsic.String.Concat(V.Caller.PluginsDir,"\Lantek\GSS\FlexScheduleIn\Errors\",V.uGlobal.uFiles(V.Local.iForDocs)!File,V.Local.sErrorDocPath)
+
+		' load document and Query document to a node set using Xpath
+		V.local.bEOFNest.Set(False)
+		V.Local.iForNest.Set(0)
+		F.Global.XML.LoadDocument(V.Local.sDoc,V.Local.sDocName,False,True,False,False)
+
+		' see if it's a "REMOVE" file
+		' move from below.  Need to  know if it's a "REMOVE" before verifying the schedule
+		F.global.XML.Query(V.Local.sDoc,"set0","//*/REMOVE")
+			Function.Global.XML.ReadNodeSetValue(V.Local.sDoc,"set0","text",V.Local.sRemove)
+		Function.global.xml.closeSet(V.Local.sDoc,"set0")
+
+		' verify jobs and parts are valid in GSS
+		F.Intrinsic.Control.CallSub(Jobpart_verification,"Doc",V.Local.sDoc,"Name",V.uGlobal.uFiles(V.Local.iForDocs)!File,"Remove",V.Local.sRemove)
+
+		' *********************** added 1/13/2013 jrm **********************************
+		Gui.Form1.lbl3.Caption(V.Args.INVALID)
+
+		' *********************** added 1/13/2013 jrm **********************************
+		Gui.Form1.lbl3.Caption("Write File")
+
+		' if any job or part  on the doc is invalid, the whole doc will be moved to the errors folder, and a log will detail which job/part was not found
+		' if anything was found invalid, go to the end of the loop where the doc is moved
+		F.Intrinsic.Control.If(V.Args.INVALID,=,"I")
+			F.Intrinsic.String.Concat(V.Local.sFilesInError,V.Ambient.NewLine,V.uGlobal.uFiles(V.Local.iForDocs)!File,V.Local.sFilesInError)
+			V.Local.bErrors.Set(True)
+			F.Intrinsic.Control.GoTo("INVALID")
+		F.Intrinsic.Control.EndIf
+
+'		' see if it's a "REMOVE" file
+'		F.global.XML.Query(V.Local.sDoc,"set0","//*/REMOVE")
+'			Function.Global.XML.ReadNodeSetValue(V.Local.sDoc,"set0","text",V.Local.sRemove)
+'		Function.global.xml.closeSet(V.Local.sDoc,"set0")
+
+		' get Nests and qty's on the file
+		F.global.XML.Query(V.Local.sDoc,"set1","//*/NESTING")
+		F.Intrinsic.Control.dountil(V.local.bEOFNest,=,True)
+			V.Local.sNestID.RedimPreserve(0,V.Local.iForNest)
+			V.Local.iNestQty.RedimPreserve(0,V.Local.iForNest)
+			Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"set1","NestID",V.Local.sNestID(V.Local.iForNest))
+			Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"set1","Quantity",V.Local.iNestQty(V.Local.iForNest))
+			F.Intrinsic.Math.Add(V.Local.iForNest,1,V.Local.iForNest)
+		F.global.xml.next(V.Local.sDoc,"set1",V.local.bEOFNest)
+		F.Intrinsic.Control.loop
+		Function.global.xml.closeSet(V.Local.sDoc,"set1")
+
+		' get fname and type
+		V.Local.bEofDoc.Set(False)
+		V.Local.iForFile.Set(0)
+		F.global.XML.Query(V.Local.sDoc,"Set2","//*/DOCUMENT")
+		F.Intrinsic.Control.dountil(V.local.bEOFDoc,=,True)
+			V.Local.sFName.RedimPreserve(0,V.Local.iForFile)
+			V.Local.sFType.RedimPreserve(0,V.Local.iForFile)
+			Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set2","FName",V.Local.sFName(V.Local.iForFile))
+			Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set2","FType",V.Local.sFType(V.Local.iForFile))
+			F.Intrinsic.Math.Add(V.Local.iForFile,1,V.Local.iForFile)
+		F.global.xml.next(V.Local.sDoc,"set2",V.local.bEOFDoc)
+		F.Intrinsic.Control.loop
+		Function.global.xml.closeSet(V.Local.sDoc,"Set2")
+
+		' for each nest ID
+		V.Local.bEofPart.Set(False)
+		F.Intrinsic.Control.For(V.Local.iForNest,V.Local.sNestID.LBound,V.Local.sNestID.UBound,1)
+			V.Local.bEofPart.Set(False)
+
+			' get part/job information on the nest, under Parts\Part tag
+			F.Intrinsic.String.Concat("//*/NESTING[@NestID=",V.Local.sNestID(v.Local.iForNest),"]/PARTS/PART",V.Local.sXquery)
+			F.Global.XML.Query(V.Local.sDoc,"set3",V.Local.sXquery)
+			F.Intrinsic.Control.dountil(V.local.bEOFPart,=,True)
+				F.Intrinsic.Control.If(V.uGlobal.uWOS!Job.UBound,=,-1)
+					V.uGlobal.uWOS.Redim(0,0)
+					V.Local.iRedim.Set(0)
+				F.Intrinsic.Control.Else
+					F.Intrinsic.Math.Add(V.Local.iRedim,1,V.Local.iRedim)
+					V.uGlobal.uWOS.Redimpreserve(0,V.Local.iRedim)
+				F.Intrinsic.Control.EndIf
+
+				F.Intrinsic.String.Split(V.Local.sFName(v.Local.iForNest),"\",V.Local.sTemp)
+				F.Intrinsic.String.Split(V.Local.sTemp(V.Local.sTemp.UBound),".",V.Local.sSchedId)
+
+				' create element on uWOS for each Nest/Part
+				V.uGlobal.uWOS(v.Local.iRedim)!File.Set(V.uGlobal.uFiles(V.Local.iForDocs)!File)
+				V.uGlobal.uWOS(v.Local.iRedim)!Remove.Set(V.Local.sRemove.UCase)
+				V.uGlobal.uWOS(V.Local.iRedim)!Schedule.Set(V.Local.sSchedId(0))
+				V.uGlobal.uWOS(V.Local.iRedim)!NestID.Set(V.Local.sNestID(v.Local.iForNest))
+'				F.Intrinsic.String.LPad(V.Local.sNestID(v.Local.iForNest),"0",6,V.uGlobal.uWOS(V.Local.iRedim)!NestID)
+				V.uGlobal.uWOS(V.Local.iRedim)!Nest_Qty.Set(V.Local.iNestQty(v.Local.iForNest))
+				V.uGlobal.uWOS(V.Local.iRedim)!FName.Set(V.Local.sFName(v.Local.iForNest))
+				V.uGlobal.uWOS(V.Local.iRedim)!FType.Set(V.Local.sFType(v.Local.iForNest))
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","PrdRef",V.uGlobal.uWOS(V.Local.iRedim)!PrdRef)
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","PrdName",V.uGlobal.uWOS(V.Local.iRedim)!PrdName)
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","Quantity",V.uGlobal.uWOS(V.Local.iRedim)!Quantity)
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","MnORef",V.uGlobal.uWOS(V.Local.iRedim)!MnORef)
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","OrderQuantity",V.uGlobal.uWOS(V.Local.iRedim)!Order_Qty)
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","ScheduleSuffix",V.uGlobal.uWOS(V.Local.iRedim)!Schedule_Suffix)
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","TagNo",V.uGlobal.uWOS(V.Local.iRedim)!TagNo)
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","WC",V.uGlobal.uWOS(V.Local.iRedim)!WC)
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","ScheduleSeq",V.uGlobal.uWOS(V.Local.iRedim)!ScheduleSeq)
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","LaborSeq",V.uGlobal.uWOS(V.Local.iRedim)!LaborSeq)
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","MatlSeq",V.uGlobal.uWOS(V.Local.iRedim)!MatlSeq)
+				Function.Global.XML.ReadNodeSetAttribute(V.Local.sDoc,"Set3","DateSchedFrom",V.uGlobal.uWOS(V.Local.iRedim)!DateSchedFrm)
+
+			F.global.xml.next(V.Local.sDoc,"set3",V.local.bEOFPart)
+			F.Intrinsic.Control.loop
+			Function.global.xml.closeSet(V.Local.sDoc,"set3")
+
+		F.Intrinsic.Control.Next(V.Local.iForNest)
+
+		F.Global.XML.CloseDocument(V.Local.sDoc)
+
+		F.Intrinsic.Control.Label("INVALID")
+		' if something invalid was found, move the whole doc to the error directory.
+		F.Intrinsic.Control.If(V.Args.Invalid,=,"I")
+			F.Intrinsic.File.CopyFile(V.Local.sDocName,V.Local.sErrorDocPath)
+
+			'write the txt to the error log
+			F.Intrinsic.File.Exists(V.Local.sErrorLogPath,V.Local.bExists)
+			F.Intrinsic.Control.If(V.Local.bExists,=,False)
+				F.Intrinsic.File.String2File(V.Local.sErrorLogPath,V.Args.ERROR)
+			F.Intrinsic.Control.Else
+				F.Intrinsic.File.Append2File(V.Local.sErrorLogPath,V.Args.ERROR)
+			F.Intrinsic.Control.EndIf
+
+		' else move doc to completed folder
+		F.Intrinsic.Control.Else
+			F.Intrinsic.File.CopyFile(V.Local.sDocName,V.Local.sDocBkp)
+		F.Intrinsic.Control.EndIf
+
+		' move doesn't always work, so doing a copy/delete.  file was already copied, so delete it, here
+		F.Intrinsic.File.DeleteFile(V.Local.sDocName)
+
+		
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.iForDocs)
+
+' ===========================================
+'remove flex schedule
+F.Intrinsic.Control.For(V.Local.iForNest,V.uGlobal.uWOS!NestID.LBound,V.uGlobal.uWOS!NestID.UBound,1)
+	F.Intrinsic.Control.If(V.uGlobal.uWOS(v.Local.iForNest)!Remove.UCase,=,"TRUE")
+		F.Intrinsic.String.RPad(V.uGlobal.uWOS(v.Local.iForNest)!MnoRef," ",9,V.uGlobal.uWOS(v.Local.iForNest)!MnoRef)
+		F.Intrinsic.String.Left(V.uGlobal.uWOS(v.Local.iForNest)!MnoRef,6,V.Local.sJob)
+		F.Intrinsic.String.Right(V.uGlobal.uWOS(v.Local.iForNest)!MnoRef,3,V.Local.sSuffix)
+		V.Local.sVerify.Set("")
+
+		F.Intrinsic.String.Concat("delete from LANTEK_WOS where NEST_ID='",V.uGlobal.uWOS(v.Local.iForNest)!NestID,"' and SCHEDULE='",V.uGlobal.uWOS(v.Local.iForNest)!Schedule,"' and SCHEDULESUFFIX='",V.uGlobal.uWOS(v.Local.iForNest)!Schedule_Suffix,"'",V.Local.sSel)
+		F.ODBC.Connection!Con.Execute(V.Local.sSel)
+		F.Intrinsic.String.Concat("select NEST_ID from LANTEK_WOS where NEST_ID='",V.uGlobal.uWOS(v.Local.iForNest)!NestID,"' and SCHEDULE='",V.uGlobal.uWOS(v.Local.iForNest)!Schedule,"' and SCHEDULESUFFIX='",V.uGlobal.uWOS(v.Local.iForNest)!Schedule_Suffix,"'",V.Local.sSel)
+		f.ODBC.Connection!Con.ExecuteandReturn(v.Local.sSel,v.Local.sRet)
+		F.Intrinsic.Control.If(V.Local.sRet,<>,"")
+			V.Local.bVerify.Set(False)
+			F.Intrinsic.String.Concat(V.Local.sVerify,V.uGlobal.uWOS(v.Local.iForNest)!File," Delete Nest_Id= ",V.uGlobal.uWOS(v.Local.iForNest)!NestID," from Lantek_WOS failed",V.Ambient.NewLine,V.Local.sVerify)
+		F.Intrinsic.Control.EndIf
+
+
+		F.Intrinsic.String.Concat("delete from Job_CT_Flx_Schd where Schedule='",V.uGlobal.uWOS(v.Local.iForNest)!Schedule,"' and Schedule_Suffix='",V.uGlobal.uWOS(v.Local.iForNest)!Schedule_Suffix,"'",V.Local.sSel)
+		F.ODBC.Connection!Con.Execute(V.Local.sSel)
+		F.Intrinsic.String.Concat("select * from Job_CT_Flx_Schd where Schedule='",V.uGlobal.uWOS(v.Local.iForNest)!Schedule,"' and Schedule_Suffix='",V.uGlobal.uWOS(v.Local.iForNest)!Schedule_Suffix,"'",V.Local.sSel)
+		f.ODBC.Connection!Con.ExecuteandReturn(v.Local.sSel,v.Local.sRet)
+		F.Intrinsic.Control.If(V.Local.sRet,<>,"")
+			V.Local.bVerify.Set(False)
+			F.Intrinsic.String.Concat(V.Local.sVerify,"Delete Schedule= ",V.uGlobal.uWOS(v.Local.iForNest)!Schedule," and Schedule_Suffix= ",V.uGlobal.uWOS(v.Local.iForNest)!Schedule_Suffix," from Job_CT_Flx_Schd failed",V.Ambient.NewLine,V.Local.sVerify)
+		F.Intrinsic.Control.EndIf
+
+
+		F.Intrinsic.String.Concat("update ATG_XTRA_WOUF set Task ='' where Job='",V.Local.sJob.Trim,"' and Suffix='",V.Local.sSuffix.Trim,"'",V.Local.sSel)
+		F.ODBC.Connection!Con.Execute(V.Local.sSel)
+		F.Intrinsic.String.Concat("select * from ATG_XTRA_WOUF where Task ='' and Job='",V.Local.sJob.Trim,"' and Suffix='",V.Local.sSuffix.Trim,"'",V.Local.sSel)
+		f.ODBC.Connection!Con.ExecuteandReturn(v.Local.sSel,v.Local.sRet)
+		F.Intrinsic.Control.If(V.Local.sRet,<>,"")
+			V.Local.bVerify.Set(False)
+			F.Intrinsic.String.Concat(V.Local.sVerify,"Update Task on ATG_XTRA_WOUF for  Job= ",V.Local.sJob.Trim," and Suffix= ",V.Local.sSuffix.Trim," failed",V.Ambient.NewLine,V.Local.sVerify)
+		F.Intrinsic.Control.EndIf
+
+
+		'remove user1
+		F.Intrinsic.String.Concat("delete from WO_User_Flds  where Job='",V.Local.sJob.Trim,"' and Suffix='",V.Local.sSuffix.Trim,"' and User_1='",V.uGlobal.uWOS(v.Local.iForNest)!TagNo,"' ",V.Local.sSel)
+		F.ODBC.Connection!Con.Execute(V.Local.sSel)
+		F.Intrinsic.String.Concat("select * from WO_User_Flds  where Job='",V.Local.sJob.Trim,"' and Suffix='",V.Local.sSuffix.Trim,"' and User_1='",V.uGlobal.uWOS(v.Local.iForNest)!TagNo,"' ",V.Local.sSel)
+		f.ODBC.Connection!Con.ExecuteandReturn(v.Local.sSel,v.Local.sRet)
+		F.Intrinsic.Control.If(V.Local.sRet,<>,"")
+			V.Local.bVerify.Set(False)
+			F.Intrinsic.String.Concat(V.Local.sVerify,"Delete Task from WO_User_Flds  where Job= ",V.Local.sJob.Trim," and Suffix= ",V.Local.sSuffix.Trim," and User_1= ",V.uGlobal.uWOS(v.Local.iForNest)!TagNo,"  failed",V.Ambient.NewLine,V.Local.sVerify)
+		F.Intrinsic.Control.EndIf
+
+		F.Intrinsic.Control.If(V.Local.bVerify,=,False)
+			F.Intrinsic.String.Concat(V.Local.sFilesInError,V.Ambient.NewLine,V.uGlobal.uWOS(v.Local.iForNest)!File,V.Local.sFilesInError)
+			V.Local.bErrors.Set(True)
+		F.Intrinsic.Control.EndIf
+
+		'write the txt to the error log
+		F.Intrinsic.File.Exists(V.Local.sErrorLogPath,V.Local.bExists)
+		F.Intrinsic.Control.If(V.Local.bExists,=,False)
+			F.Intrinsic.File.String2File(V.Local.sErrorLogPath,V.Local.sVerify)
+		F.Intrinsic.Control.Else
+			F.Intrinsic.File.Append2File(V.Local.sErrorLogPath,V.Local.sVerify)
+		F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.Else
+		F.Intrinsic.Control.If(V.uGlobal.uWOS!Job.UBound,>,-1)
+			'write records to the table
+			F.Intrinsic.String.Concat("select * from LANTEK_WOS where NEST_ID='",V.uGlobal.uWOS(v.Local.iForNest)!NestID,"' and SCHEDULE='",V.uGlobal.uWOS(v.Local.iForNest)!Schedule,"' and SCHEDULESUFFIX='",V.uGlobal.uWOS(v.Local.iForNest)!Schedule_Suffix,"' and SCHEDULESEQ='",V.uGlobal.uWOS(v.Local.iForNest)!ScheduleSeq,"'",V.Local.sSel)
+			F.ODBC.Connection!Con.OpenRecordsetRW("rstWOS",V.Local.sSel)
+				F.Intrinsic.Control.If(V.ODBC.Con!rstWOS.EOF,=,False)
+					F.Intrinsic.Math.Add(V.uGlobal.uWOS(v.Local.iForNest)!Quantity,V.ODBC.Con!rstWOS.FieldVal!QUANTITY,V.uGlobal.uWOS(v.Local.iForNest)!Quantity)
+				F.Intrinsic.Control.else
+					F.ODBC.Con!rstWOS.AddNew
+					F.ODBC.Con!rstWOS.Set!NEST_ID(V.uGlobal.uWOS(v.Local.iForNest)!NestID)
+					F.ODBC.Con!rstWOS.Set!NEST_QTY(V.uGlobal.uWOS(v.Local.iForNest)!Nest_Qty)
+					F.ODBC.Con!rstWOS.Set!FNAME(V.uGlobal.uWOS(v.Local.iForNest)!Fname)
+					F.ODBC.Con!rstWOS.Set!FTYPE(V.uGlobal.uWOS(v.Local.iForNest)!Ftype)
+					F.ODBC.Con!rstWOS.Set!PRDREF(V.uGlobal.uWOS(v.Local.iForNest)!PrdRef)
+					F.ODBC.Con!rstWOS.Set!PRDNAME(V.uGlobal.uWOS(v.Local.iForNest)!PrdName)
+					F.ODBC.Con!rstWOS.Set!MNOREF(V.uGlobal.uWOS(v.Local.iForNest)!MnORef.Trim)
+					F.ODBC.Con!rstWOS.Set!ORDERQUANTITY(V.uGlobal.uWOS(v.Local.iForNest)!Order_Qty)
+					F.ODBC.Con!rstWOS.Set!SCHEDULESUFFIX(V.uGlobal.uWOS(v.Local.iForNest)!Schedule_Suffix)
+					F.ODBC.Con!rstWOS.Set!TAGNO(V.uGlobal.uWOS(v.Local.iForNest)!TagNo)
+					F.ODBC.Con!rstWOS.Set!WC(V.uGlobal.uWOS(v.Local.iForNest)!WC)
+					F.ODBC.Con!rstWOS.Set!SCHEDULESEQ(V.uGlobal.uWOS(v.Local.iForNest)!ScheduleSeq)
+					F.ODBC.Con!rstWOS.Set!LABORSEQ(V.uGlobal.uWOS(v.Local.iForNest)!LaborSeq)
+					F.ODBC.Con!rstWOS.Set!MATLSEQ(V.uGlobal.uWOS(v.Local.iForNest)!MatlSeq)
+					F.ODBC.Con!rstWOS.Set!DATESCHEDFROM(V.uGlobal.uWOS(v.Local.iForNest)!DateSchedFrm)
+					F.ODBC.Con!rstWOS.Set!SCHEDULE(V.uGlobal.uWOS(v.Local.iForNest)!Schedule)
+					F.ODBC.Con!rstWOS.Set!COMPLETE(False)
+				F.Intrinsic.Control.Endif
+					F.ODBC.Con!rstWOS.Set!QUANTITY(V.uGlobal.uWOS(v.Local.iForNest)!Quantity)
+				F.ODBC.Con!rstWOS.Update
+			F.ODBC.Con!rstWOS.Close
+
+'			F.Intrinsic.Control.CallSub(Loadschedule)
+		F.Intrinsic.Control.EndIf
+
+	F.Intrinsic.Control.EndIf
+F.Intrinsic.Control.Next(V.Local.iForNest)
+
+F.Intrinsic.Control.CallSub(Loadschedule)
+
+
+F.ODBC.Connection!Con.Close
+Gui.Form1..Visible(false)
+
+
+' if invalid job/part/schedule were found
+F.Intrinsic.Control.If(V.Local.bErrors,=,True)
+	F.Intrinsic.Control.CallSub(Message,"ERRORS",V.Local.sFilesInError,"UPDATE",V.Local.sUpdateErrors)
+F.Intrinsic.Control.EndIf
+
+F.Intrinsic.File.Exists(V.Local.sSchedInUse,V.Local.bInUse)
+F.Intrinsic.Control.If(V.Local.bInUse,=,True)
+	F.Intrinsic.File.DeleteFile(V.Local.sSchedInUse)
+F.Intrinsic.Control.EndIf
+
+Gui.Form1..Visible(false)
+
+F.Intrinsic.Control.ExitSub
+
+' ============= if GAB error occurred ===============
+
+F.Intrinsic.Control.Label("WriteFile_Err")
+
+F.Intrinsic.File.Exists(V.Local.sSchedInUse,V.Local.bInUse)
+F.Intrinsic.Control.If(V.Local.bInUse,=,True)
+	F.Intrinsic.File.DeleteFile(V.Local.sSchedInUse)
+F.Intrinsic.Control.EndIf
+
+' if process errors, move doc to error folder
+F.Intrinsic.File.CopyFile(V.Local.sDocName,V.Local.sErrorDocPath)
+F.Intrinsic.File.DeleteFile(V.Local.sDocName)
+
+' write the txt to the error log
+F.Intrinsic.File.Exists(V.Local.sErrorLogPath,V.Local.bExists)
+F.Intrinsic.String.Concat(V.uGlobal.uFiles(v.Local.iForDocs)!File," GAB Error in Subroutine: ",V.Ambient.CurrentSubroutine,"  Error: ",V.Ambient.ErrorNumber," with description ",V.Ambient.ErrorDescription,V.Local.sError)
+
+F.Intrinsic.Control.If(V.Local.bExists,=,False)
+	F.Intrinsic.File.String2File(V.Local.sErrorLogPath,V.Local.sError)
+F.Intrinsic.Control.Else
+	F.Intrinsic.File.Append2File(V.Local.sErrorLogPath,V.Local.sError)
+F.Intrinsic.Control.EndIf
+
+
+F.Intrinsic.Control.ExitSub
+
+
+
+Program.Sub.WriteFile.End
+
+Program.Sub.Unload.Start
+
+
+
+'F.ODBC.Connection!Con.Close
+F.Intrinsic.Control.End
+
+
+Program.Sub.Unload.End
+
+Program.Sub.JobPart_Verification.Start
+
+V.Local.sXquery.Declare(String)
+V.local.bEOFPart.Declare(Boolean)
+V.Local.sRet.Declare(String)
+V.Local.sJob.Declare(String)
+V.Local.sSuffix.Declare(String)
+V.Local.sSel.Declare(String)
+V.Local.sInvalid.Declare(String)
+V.Local.sErrorMsg.Declare(String)
+V.local.bEOFDoc.Declare(Boolean)
+V.Local.sFName.Declare(String)
+V.Local.sTemp.Declare(String)
+Gui.Form1.lbl3.Caption("Job Verification")
+V.Local.sSchedId.Declare(String)
+
+' default value to "V" for "Valid".
+V.Local.sInvalid.Set("V")
+
+' if not a remove, don't see if schedule already exists.  If it is a REMOVE, the schedule of course should exist.
+F.Intrinsic.Control.If(V.Args.Remove.UCase,<>,"TRUE")
+
+	' check to see if schedule already exists
+	F.global.XML.Query(V.Args.Doc,"Set2","//*/DOCUMENT")
+	F.Intrinsic.Control.dountil(V.local.bEOFDoc,=,True)
+		Function.Global.XML.ReadNodeSetAttribute(V.Args.Doc,"Set2","FName",V.Local.sFName)
+		F.Intrinsic.String.Split(V.Local.sFName,"\",V.Local.sTemp)
+		F.Intrinsic.String.Split(V.Local.sTemp(V.Local.sTemp.UBound),".",V.Local.sSchedId)
+
+		F.Intrinsic.String.Concat("select Schedule from Job_CT_Flx_Schd where Schedule='",V.Local.sSchedId,"'",V.Local.sSel)
+		F.ODBC.Connection!Con.OpenRecordsetRO("rstSel",V.Local.sSel)
+			F.Intrinsic.Control.If(V.ODBC.con!rstSel.EOF,=,False)
+				V.Local.sInvalid.Set("I")
+				F.Intrinsic.String.Concat(V.Local.sErrorMsg,V.Args.Name," Schedule Exists => ",V.Local.sSchedId,V.Ambient.NewLine,V.Local.sErrorMsg)
+			F.Intrinsic.Control.EndIf
+		F.ODBC.con!rstSel.Close
+
+	F.global.xml.next(V.Args.Doc,"set2",V.local.bEOFDoc)
+	F.Intrinsic.Control.loop
+F.Intrinsic.Control.EndIf
+				
+' **************************** added 01/11/2013 jrm ******************************************************
+' **************************** removed 01/15/2013 jct ******************************************************
+' still need job verify
+F.Intrinsic.String.Concat("//PARTS/PART","",V.Local.sXquery)
+F.Global.XML.Query(V.Args.Doc,"set3",V.Local.sXquery)
+F.Intrinsic.Control.dountil(V.local.bEOFPart,=,True)
+	
+	' look up job number
+	Function.Global.XML.ReadNodeSetAttribute(V.Args.Doc,"Set3","MnORef",V.Local.sRet)
+		F.Intrinsic.String.RPad(V.Local.sRet," ",9,V.Local.sRet)
+		F.Intrinsic.String.Left(V.Local.sRet,6,V.Local.sJob)
+		F.Intrinsic.String.Right(V.Local.sRet,3,V.Local.sSuffix)
+		F.Intrinsic.String.Concat("select * from Job_Header where Job = '",V.Local.sJob.Trim,"' and Suffix = '",V.Local.sSuffix.Trim,"' ",V.Local.sSel)
+		F.ODBC.Connection!Con.OpenRecordsetRO("rstSel",V.Local.sSel)
+			F.Intrinsic.Control.If(V.ODBC.con!rstSel.EOF,=,True)
+				V.Local.sInvalid.Set("I")
+				F.Intrinsic.String.Concat(V.Local.sErrorMsg,V.Args.Name," Job=> ",V.Local.sJob.Trim," Suffix=> ",V.Local.sSuffix.Trim,V.Ambient.NewLine,V.Local.sErrorMsg)
+			F.Intrinsic.Control.EndIf
+		F.ODBC.con!rstSel.Close
+
+' ******************************* removed jrm 01/10/2013 *****************************************************************************
+	'look up part number
+'	Function.Global.XML.ReadNodeSetAttribute(V.Args.Doc,"Set3","PrdRef",V.Local.sRet)
+'		F.Intrinsic.String.Concat("select * from Inventory_Mstr where Part = '",V.Local.sRet,"' ",V.Local.sSel)
+'		F.ODBC.Connection!Con.OpenRecordsetRO("rstSel",V.Local.sSel)
+'			F.Intrinsic.Control.If(V.ODBC.con!rstSel.EOF,=,True)
+'				V.Local.sInvalid.Set("I")
+'				F.Intrinsic.String.Concat(V.Local.sErrorMsg,V.Args.Name," Part=> ",V.Local.sRet,V.Ambient.NewLine,V.Local.sErrorMsg)
+'			F.Intrinsic.Control.EndIf
+'		F.ODBC.con!rstSel.Close
+				
+F.global.xml.next(V.Args.Doc,"set3",V.local.bEOFPart)
+F.Intrinsic.Control.loop
+Function.global.xml.closeSet(V.Args.Doc,"set3")
+
+
+' **************************** added 01/11/2013 jrm ******************************************************
+' **************************** removed 01/15/2013 jct ******************************************************
+'F.Intrinsic.Control.Label("skip_varify")
+
+F.Intrinsic.Variable.AddRV("INVALID",V.Local.sInvalid)
+F.Intrinsic.Variable.AddRV("ERROR",V.Local.sErrorMsg)
+
+
+' **************************** added 01/11/2013 jrm ******************************************************
+F.Intrinsic.Control.ExitSub
+
+Program.Sub.JobPart_Verification.End
+
+Program.Sub.Message.Start
+
+V.Local.sEmailFile.Declare(String)
+V.Local.bExists.Declare(Boolean)
+V.Local.iFor.Declare(Long)
+V.Local.sMsg.Declare(String)
+
+
+' file for email notifications
+F.Intrinsic.String.Concat(V.Caller.PluginsDir,"\Lantek\GSS\MsgList.txt",V.Local.sEmailFile)
+
+F.Intrinsic.File.Exists(V.Local.sEmailFile,V.Local.bExists)
+
+' if list of emails exists
+F.Intrinsic.Control.If(V.Local.bExists,=,True)
+
+	' set the message
+	F.Intrinsic.String.Concat("Errors occured loading the following schedule files:",V.Args.ERRORS,V.Local.sMsg)
+
+	' split the file, and create emails to each recipient
+	F.Intrinsic.File.File2String(V.Local.sEmailFile,V.Local.sEmailFile)
+	F.Intrinsic.String.Split(V.Local.sEmailFile,V.Ambient.NewLine,V.Local.sEmailFile)
+	F.Intrinsic.Control.For(V.Local.iFor,V.Local.sEmailFile.LBound,V.Local.sEmailFile.UBound,1)
+		F.Intrinsic.Control.If(V.Local.sEmailFile(v.Local.iFor).Trim,<>,"")
+			F.Global.Messaging.CreateInternalMessage(V.Local.sEmailFile(v.Local.iFor).Trim,V.Local.sMsg)
+		F.Intrinsic.Control.EndIf
+	F.Intrinsic.Control.Next(V.Local.iFor)
+F.Intrinsic.Control.EndIf
+
+Program.Sub.Message.End
+
+Program.Sub.Comments.Start
+${$0$}$GCG_Load_Schedule$}$JCT$}$12/6/2012
+${$3$}$0$}$$}$-1$}$-1$}$$}$1/1/1900$}$for Iowa Laser; runs in task scheduler
+${$4$}$0$}$$}$0$}$-1$}$JCT$}$12/6/2012 1:09:21 PM$}$logic to write an exception log if it finds and invalid job ro part
+Program.Sub.Comments.End
+
